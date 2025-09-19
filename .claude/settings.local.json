@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Read(//Users/davidhawkins/developer/cushion/web-app/src/hooks/**)",
+      "Read(//Users/davidhawkins/Developer/cushion/web-app/src/**)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
