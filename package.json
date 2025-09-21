@@ -9,6 +9,7 @@
     "dev:desktop": "tauri dev",
     "dev:ios": "tauri ios dev",
     "build": "tauri build",
+    "build:test": "TAURI_BUILD_TEST=true tauri build --debug",
     "build:desktop": "tauri build",
     "build:ios": "tauri ios build",
     "setup:ios": "tauri ios init",
@@ -17,5 +18,9 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/plugin-notification": "^2.3.1"
   }
 }
