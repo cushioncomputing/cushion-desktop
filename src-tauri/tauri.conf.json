@@ -5,33 +5,15 @@
   "identifier": "com.cushion.desktop",
   "build": {
     "devUrl": "http://localhost:3000",
-    "frontendDist": "../../web-app/out",
-    "beforeBuildCommand": "cd ../web-app && TAURI_BUILD=true yarn build"
+    "frontendDist": "https://app.cushion.so",
+    "beforeBuildCommand": ""
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "label": "main",
-        "title": "Cushion",
-        "width": 1200,
-        "height": 800,
-        "minWidth": 800,
-        "minHeight": 600,
-        "resizable": true,
-        "fullscreen": false,
-        "transparent": false,
-        "maximized": false,
-        "visible": true,
-        "decorations": true,
-        "center": true,
-        "skipTaskbar": false,
-        "alwaysOnTop": false,
-        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 CushionDesktop/0.1.0"
-      }
-    ],
+    "macOSPrivateApi": true,
+    "windows": [],
     "security": {
-      "csp": null,
+      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src 'self' ipc: http: https: ws: wss: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' data:; img-src 'self' data: https: http: blob:; font-src 'self' data: https: http:; worker-src 'self' blob:; child-src 'self' blob:;",
       "dangerousDisableAssetCspModification": true,
       "capabilities": [
         {
@@ -40,14 +22,19 @@
           "windows": ["main"],
           "webviews": ["main"],
           "remote": {
-            "urls": ["http://localhost:3000"]
+            "urls": ["http://localhost:3000", "https://app.cushion.so"]
           },
           "local": true,
           "permissions": [
             "notification:default",
             "notification:allow-request-permission",
             "notification:allow-is-permission-granted",
-            "notification:allow-show"
+            "notification:allow-show",
+            "core:window:default",
+            "core:window:allow-start-dragging",
+            "core:event:default",
+            "core:webview:default",
+            "core:webview:allow-internal-toggle-devtools"
           ]
         }
       ]
