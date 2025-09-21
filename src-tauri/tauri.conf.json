@@ -5,7 +5,7 @@
   "identifier": "com.cushion.desktop",
   "build": {
     "devUrl": "http://localhost:3000",
-    "frontendDist": "https://app.cushion.so",
+    "frontendDist": "http://localhost:3000",
     "beforeBuildCommand": ""
   },
   "app": {
@@ -19,10 +19,17 @@
         {
           "identifier": "default",
           "description": "Default permissions for the application",
-          "windows": ["main"],
-          "webviews": ["main"],
+          "windows": [
+            "main"
+          ],
+          "webviews": [
+            "main"
+          ],
           "remote": {
-            "urls": ["http://localhost:3000", "https://app.cushion.so"]
+            "urls": [
+              "http://localhost:3000",
+              "https://app.cushion.so"
+            ]
           },
           "local": true,
           "permissions": [
@@ -59,7 +66,9 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["cushion"]
+        "schemes": [
+          "cushion"
+        ]
       }
     }
   }

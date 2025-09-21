@@ -188,7 +188,16 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             let win_builder = win_builder
                 .title_bar_style(TitleBarStyle::Overlay)
-                .traffic_light_position(tauri::LogicalPosition::new(15.0, 20.0));
+                .traffic_light_position(tauri::LogicalPosition::new(15.0, 20.0))
+                .initialization_script("
+                    // Disable swipe navigation
+                    document.addEventListener('DOMContentLoaded', function() {
+                        document.body.style.overscrollBehaviorX = 'none';
+                        document.body.style.overflowX = 'hidden';
+                        document.documentElement.style.overscrollBehaviorX = 'none';
+                        document.documentElement.style.overflowX = 'hidden';
+                    });
+                ");
 
             let _window = win_builder.build().unwrap();
 
