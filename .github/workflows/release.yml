@@ -80,7 +80,9 @@ jobs:
           node build-config.js
 
           # Build with Tauri
-          npm run tauri build -- --bundles app,updater --target aarch64-apple-darwin
+          # Note: updater artifacts (.tar.gz and .sig) are created automatically when
+          # TAURI_SIGNING_PRIVATE_KEY is set and updater plugin is active
+          npm run tauri build -- --bundles app --target aarch64-apple-darwin
 
       - name: Create production DMG
         env:
@@ -199,7 +201,9 @@ jobs:
           node build-config.js
 
           # Build with Tauri (debug mode for faster builds)
-          npm run tauri build -- --debug --bundles app,updater --target aarch64-apple-darwin
+          # Note: updater artifacts (.tar.gz and .sig) are created automatically when
+          # TAURI_SIGNING_PRIVATE_KEY is set and updater plugin is active
+          npm run tauri build -- --debug --bundles app --target aarch64-apple-darwin
 
       - name: Create dev DMG
         env:
