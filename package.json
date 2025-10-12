@@ -10,6 +10,7 @@
     "dev:ios": "tauri ios dev",
     "build": "node build-config.js && tauri build",
     "build:test": "TAURI_BUILD_TEST=true node build-config.js && tauri build --debug",
+    "build:dev": "TAURI_BUILD_DEV=true node build-config.js && tauri build --debug --bundles app && ./create-dev-dmg.sh",
     "build:desktop": "node build-config.js && tauri build",
     "build:ios": "tauri ios build",
     "setup:ios": "tauri ios init",

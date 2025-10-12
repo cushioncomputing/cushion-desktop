@@ -1,39 +1,277 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
-    <script type="module" src="/main.js" defer></script>
-  </head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connection Error - Cushion</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #fafafa;
+            color: #171717;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #0f0f0f;
+                color: #fafafa;
+            }
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 450px;
+            width: 100%;
+        }
+        .icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1.5rem;
+            border-radius: 50%;
+            background: #f4f4f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        @media (prefers-color-scheme: dark) {
+            .icon {
+                background: #18181b;
+            }
+        }
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0 0 0.75rem 0;
+            letter-spacing: -0.025em;
+        }
+        p {
+            color: #737373;
+            margin: 0 0 2rem 0;
+            line-height: 1.6;
+            font-size: 0.9375rem;
+        }
+        @media (prefers-color-scheme: dark) {
+            p {
+                color: #a3a3a3;
+            }
+        }
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        button {
+            background: #171717;
+            color: #fafafa;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+        @media (prefers-color-scheme: dark) {
+            button {
+                background: #fafafa;
+                color: #171717;
+            }
+        }
+        button:hover:not(:disabled) {
+            opacity: 0.85;
+            transform: translateY(-1px);
+        }
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+        button.secondary {
+            background: transparent;
+            color: #737373;
+            border: 1px solid #e5e5e5;
+        }
+        @media (prefers-color-scheme: dark) {
+            button.secondary {
+                color: #a3a3a3;
+                border-color: #27272a;
+            }
+        }
+        button.secondary:hover:not(:disabled) {
+            border-color: #d4d4d8;
+            color: #171717;
+        }
+        @media (prefers-color-scheme: dark) {
+            button.secondary:hover:not(:disabled) {
+                border-color: #3f3f46;
+                color: #fafafa;
+            }
+        }
+        .status {
+            font-size: 0.8125rem;
+            color: #a3a3a3;
+            margin-top: 1rem;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            min-height: 1.25rem;
+        }
+        .status.checking {
+            color: #3b82f6;
+        }
+        .status.error {
+            color: #ef4444;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🌐</div>
+        <h1>Unable to Connect</h1>
+        <p>Cushion couldn't reach the server. Please check your internet connection and try again.</p>
+        <div class="button-group">
+            <button id="retry-btn" onclick="tryAgain()">Try Again</button>
+            <button class="secondary" onclick="quitApp()">Quit</button>
+        </div>
+        <div class="status" id="status"></div>
+    </div>
+    <script>
+        let retryCount = 0;
+        const statusEl = document.getElementById('status');
+        const retryBtn = document.getElementById('retry-btn');
 
-  <body>
-    <main class="container">
-      <h1>Welcome to Tauri</h1>
+        // Target URL is injected by Rust at build time
+        const DEFAULT_APP_URL = '{{TARGET_URL}}';
 
-      <div class="row">
-        <a href="https://tauri.app" target="_blank">
-          <img src="/assets/tauri.svg" class="logo tauri" alt="Tauri logo" />
-        </a>
-        <a
-          href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"
-          target="_blank"
-        >
-          <img
-            src="/assets/javascript.svg"
-            class="logo vanilla"
-            alt="JavaScript logo"
-          />
-        </a>
-      </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
+        const params = new URLSearchParams(window.location.search);
+        const appUrl = params.get('appUrl') || DEFAULT_APP_URL;
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p id="greet-msg"></p>
-    </main>
-  </body>
+        // Check if this is the initial load (data: URL means first load)
+        const isInitialLoad = window.location.protocol === 'data:' || (!params.has('appUrl') && !params.has('error'));
+
+        // Show initial error if provided
+        const error = params.get('error');
+        if (error) {
+            statusEl.textContent = `Error: ${error}`;
+            statusEl.className = 'status error';
+        }
+
+        // If this is initial load, automatically try to connect
+        if (isInitialLoad) {
+            // Change UI to loading state
+            document.querySelector('h1').textContent = 'Connecting to Cushion...';
+            document.querySelector('.icon').textContent = '⟳';
+            document.querySelector('p').textContent = 'Checking server availability...';
+            statusEl.className = 'status checking';
+            statusEl.innerHTML = '<span class="spinner">⟳</span>Attempting to connect...';
+            retryBtn.style.display = 'none';
+
+            // Auto-connect after a brief moment
+            setTimeout(() => {
+                tryAgain(true);
+            }, 500);
+        }
+
+        // Quit the application
+        async function quitApp() {
+            if (window.__TAURI__) {
+                try {
+                    const { exit } = window.__TAURI__.process;
+                    await exit(0);
+                } catch (e) {
+                    console.error('Failed to quit:', e);
+                }
+            }
+        }
+
+        // Try to reconnect to the web app
+        async function tryAgain(isAutoRetry = false) {
+            retryCount++;
+            const maxAttempts = isAutoRetry ? 3 : 1; // Auto-retry 3 times on startup, manual retry once
+
+            if (!isAutoRetry) {
+                retryBtn.disabled = true;
+            }
+
+            statusEl.className = 'status checking';
+            statusEl.innerHTML = `<span class="spinner">⟳</span>${isAutoRetry ? `Attempt ${retryCount}/${maxAttempts}...` : 'Checking connection...'}`;
+
+            // Check if Tauri API is available
+            if (window.__TAURI__) {
+                try {
+                    const isOnline = await window.__TAURI__.core.invoke('check_network_connectivity', { url: appUrl });
+
+                    if (isOnline) {
+                        statusEl.innerHTML = '<span class="spinner">⟳</span>Connected! Loading app...';
+                        setTimeout(() => {
+                            window.location.href = appUrl;
+                        }, 300);
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Connectivity check failed:', e);
+                }
+            } else {
+                // Fallback if Tauri API not available - just try to navigate
+                window.location.href = appUrl;
+                return;
+            }
+
+            // Connection failed - decide what to do
+            if (isAutoRetry && retryCount < maxAttempts) {
+                // Auto-retry with delay
+                statusEl.innerHTML = `<span class="spinner">⟳</span>Retrying in 2 seconds...`;
+                setTimeout(() => {
+                    tryAgain(true);
+                }, 2000);
+            } else {
+                // Show offline UI
+                document.querySelector('h1').textContent = 'Unable to Connect';
+                document.querySelector('.icon').textContent = '🌐';
+                document.querySelector('p').textContent = 'Cushion couldn\'t reach the server. Please check your internet connection and try again.';
+                statusEl.textContent = isAutoRetry ? `Failed after ${retryCount} attempts` : `Still offline (attempt ${retryCount})`;
+                statusEl.className = 'status error';
+                retryBtn.style.display = '';
+                retryBtn.disabled = false;
+
+                // Reset retry count for manual retries
+                if (isAutoRetry) {
+                    retryCount = 0;
+                }
+            }
+        }
+
+        // Keyboard shortcut: Cmd+R or Ctrl+R to retry
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+                e.preventDefault();
+                if (!retryBtn.disabled) {
+                    tryAgain();
+                }
+            }
+        });
+    </script>
+</body>
 </html>
