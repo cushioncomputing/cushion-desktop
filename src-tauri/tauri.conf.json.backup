@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.cushion.desktop",
   "build": {
-    "devUrl": "https://app.cushion.so",
-    "frontendDist": "https://app.cushion.so",
+    "devUrl": "http://localhost:3000",
+    "frontendDist": "http://localhost:3000",
     "beforeBuildCommand": ""
   },
   "app": {
@@ -51,6 +51,9 @@
     "active": true,
     "targets": "all",
     "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
     ],
@@ -70,16 +73,6 @@
         "schemes": [
           "cushion"
         ]
-      }
-    },
-    "updater": {
-      "active": true,
-      "endpoints": [
-        "https://github.com/cushioncomputing/cushion-desktop/releases/latest/download/latest.json"
-      ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI4ODM3MDI3QTY3QTM2QUUKUldTdU5ucW1KM0NES0NiaDlUSzZQSHMzeDdyNzdXQzQrUGJMajk5NVRCeVV1elZCWXVyS3NBcjAK",
-      "windows": {
-        "installMode": "passive"
       }
     }
   }

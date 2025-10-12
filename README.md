@@ -6,59 +6,78 @@ A native desktop wrapper for the Cushion web application built with Tauri v2.
 
 This Tauri application provides a native desktop experience for Cushion by embedding the existing web application in a native webview. The app supports:
 
-- **Desktop**: macOS, Windows, Linux
+- **macOS Desktop**: Native macOS application
+- **iOS**: Native iOS application (via Tauri mobile)
 - **Magic Link Authentication**: Seamless authentication for both web and desktop users
 - **Native Push Notifications**: System-level notifications
 - **Deep Link Support**: `cushion://` URL scheme handling
 
 ## Architecture
 
-The app uses Tauri's webview to display the existing Cushion web application (`../web-app`) running on `localhost:3001` during development, or served from the built static files in production.
+The app uses Tauri's webview to display the existing Cushion web application (`../web-app`) running on `localhost:3000` during development. Production builds are configured dynamically by `build-config.js`.
 
 ### Key Features
 
-- ✅ Native desktop app shell
+- ✅ Native macOS and iOS app shell
 - ✅ Magic link authentication support for both web and desktop
 - ✅ Native push notifications via Tauri commands
 - ✅ Deep link handling (`cushion://` URL scheme)
-- ✅ Cross-platform support (macOS, Windows, Linux)
 - ✅ Hot reload during development
-- ✅ Static build support for production
+- ✅ Multiple build modes for development and production
 
 ## Prerequisites
 
 ### macOS
+
 1. **Xcode Command Line Tools**: Required for native compilation
+
    ```bash
    xcode-select --install
    sudo xcodebuild -license accept
    ```
 
 2. **Rust**: Install via rustup
+
    ```bash
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
    ```
 
-3. **Node.js & Yarn**: Already installed in parent project
+3. **Node.js**: Already installed in parent project
 
-### Windows
-1. **Visual Studio Build Tools** or **Visual Studio Community**
-2. **Rust**: Install via rustup
-3. **WebView2**: Usually pre-installed on Windows 10/11
+### iOS Development (Optional)
 
-### Linux
-1. **Build dependencies**:
-   ```bash
-   sudo apt update
-   sudo apt install libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-   ```
-2. **Rust**: Install via rustup
+1. **Xcode**: Install from Mac App Store
+2. **iOS Simulator**: Included with Xcode
+3. **Tauri iOS dependencies**: Automatically set up with `npm run setup:ios`
+
+## Icon Generation
+
+The project includes a script to generate `.icns` files from a 1024x1024 source image for both production and development builds.
+
+### Generate Icons
+
+```bash
+./generate-icons.sh
+```
+
+The script will:
+1. Prompt for the path to your 1024x1024 source image
+2. Ask whether to generate a `dev` or `prod` icon
+3. Generate all required icon sizes (16x16 through 1024x1024, including @2x variants)
+4. Create the `.icns` file in `src-tauri/icons/`
+
+**Output files:**
+- `icon.icns` - Production icon (used in release builds)
+- `dev-icon.icns` - Development icon (used in dev builds, typically with a visual indicator)
+
+**Note**: Make sure your source image is exactly 1024x1024 pixels for best results.
 
 ## Development
 
 ### Setup
 
 1. **Install dependencies:**
+
    ```bash
    npm install
    ```
@@ -69,20 +88,24 @@ The app uses Tauri's webview to display the existing Cushion web application (`.
    ```
 
 ### Start Development Server
+
 ```bash
 # From cushion-desktop directory
 npm run dev
 ```
 
-This will:
-1. Start the Next.js web app on localhost:3001
-2. Launch the Tauri desktop app pointing to the web app
-3. Enable hot reloading for both frontend and backend changes
+This will launch the Tauri desktop app in development mode with hot reloading.
+
+**Note**: Ensure the Next.js web app is running separately on `localhost:3000` (from `../web-app` run `yarn dev`)
 
 ### Alternative Development Commands
+
 ```bash
-# Start desktop app without waiting for web server (if web app is already running)
-npm run dev:standalone
+# Start desktop app (same as npm run dev)
+npm run dev:desktop
+
+# Start iOS simulator
+npm run dev:ios
 
 # Test deep link handling
 npm run test:deep-links
@@ -90,24 +113,229 @@ npm run test:deep-links
 
 ## Building for Production
 
-### Desktop App Build
+### Production Build (Fully Automated)
+
 ```bash
 npm run build
+# or
+npm run build:desktop
 ```
 
-This will:
-1. Build the Next.js app as a static export with `TAURI_BUILD=true`
-2. Bundle the static files into the Tauri app
-3. Create platform-specific installers in `src-tauri/target/release/bundle/`
+This single command automatically:
+
+1. ✅ Loads Apple credentials from `.env`
+2. ✅ Configures the build via `build-config.js`
+3. ✅ Builds the Tauri app in release mode
+4. ✅ **Signs** the app with your Developer ID
+5. ✅ **Notarizes** the app with Apple
+6. ✅ Creates a **.dmg** installer
+7. ✅ **Notarizes** the DMG with Apple
+8. ✅ **Staples** the notarization ticket to the DMG
+9. ✅ Verifies everything is ready for distribution
+
+**Output:**
+- `src-tauri/target/release/bundle/macos/Cushion.app` - Notarized app
+- `src-tauri/target/release/bundle/dmg/Cushion_0.1.0_aarch64.dmg` - Notarized DMG
+
+**No trust warnings!** Users can install and run the app immediately without security warnings.
+
+### Prerequisites for Notarization
+
+Create a `.env` file with your Apple credentials:
+
+```bash
+APPLE_ID=your.email@example.com
+APPLE_PASSWORD=xxxx-xxxx-xxxx-xxxx  # App-specific password
+APPLE_TEAM_ID=XXXXXXXXXX
+```
+
+**Note:** The `.env` file is already in `.gitignore` to keep credentials secure.
+
+### Development Builds
+
+For faster testing and development builds:
+
+```bash
+# Quick dev build (debug mode, .app bundle only, creates .dmg)
+npm run build:dev
+
+# Test build (debug mode, preserves dev server URL for testing)
+npm run build:test
+
+# Build app only (no DMG, faster)
+npm run build:app-only
+```
+
+- `build:dev` - Creates a debug build with dev app ID (`com.cushion.desktop.dev`) and wraps in a `.dmg`
+- `build:test` - Creates a test build that points to `localhost:3000` for debugging
+- `build:app-only` - Notarized `.app` only, no DMG (faster for quick iterations)
+
+### iOS Build
+
+```bash
+npm run build:ios
+```
 
 ### Build Outputs
-- **macOS**: `.dmg` and `.app` files
-- **Windows**: `.exe` installer and `.msi`
-- **Linux**: `.deb`, `.rpm`, and `.AppImage`
+
+- **macOS**: `.dmg` and `.app` files in `src-tauri/target/release/bundle/macos/`
+- **iOS**: `.ipa` file for App Store distribution (via Xcode)
+
+### Signing & Notarization Details
+
+The build process uses these scripts:
+- `build-prod.sh` - Orchestrates the full production build
+- `notarize-dmg.sh` - Handles DMG creation and notarization
+
+**What gets notarized:**
+1. The `.app` bundle (Tauri handles this automatically)
+2. The `.dmg` installer (via `notarize-dmg.sh`)
+
+Both are fully notarized and stapled, so users never see trust warnings.
+
+## Releases & OTA Updates
+
+### Automatic Updates
+
+The app includes built-in OTA (Over-The-Air) update functionality:
+
+- ✅ Automatically checks for updates on startup
+- ✅ Downloads and verifies updates with signature verification
+- ✅ Notifies users when updates are available
+- ✅ Installs updates with a single click
+- ✅ Separate update channels for dev and production builds
+
+**Current Setup (Internal Testing):**
+- Updates served from private GitHub Releases
+- Works for team members with GitHub authentication
+- Production apps check `latest.json`
+- Dev apps check `latest-dev.json`
+
+**Future Setup (Public Beta):**
+- Will migrate to public `cushion-desktop-updates` repository
+- Updates accessible to all users without authentication
+
+### Releasing a New Version
+
+**Automated Version Bumping (Recommended):**
+
+1. **Create PR with your changes**
+2. **Add version label** to PR:
+   - `version:patch` - Bug fixes (0.1.0 → 0.1.1)
+   - `version:minor` - New features (0.1.0 → 0.2.0)
+   - `version:major` - Breaking changes (0.1.0 → 1.0.0)
+3. **Merge PR** → GitHub Actions automatically:
+   - Bumps version across all files
+   - Commits version change
+   - Triggers release build
+   - Creates GitHub Release
+   - Team members' apps auto-update!
+
+**Manual Version Bumping (Alternative):**
+
+If you prefer to bump versions manually:
+
+```bash
+# For patch releases (0.1.0 → 0.1.1)
+npm run version:patch
+
+# For minor releases (0.1.0 → 0.2.0)
+npm run version:minor
+
+# For major releases (0.1.0 → 1.0.0)
+npm run version:major
+
+# Check current versions
+npm run version:check
+```
+
+This automatically syncs the version across:
+- `package.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/tauri.conf.json`
+
+Then commit and push to trigger the release.
+
+**Version Sync Protection:**
+
+GitHub Actions automatically checks that versions are synced in PRs. If they're out of sync and you don't have a version label, the check will fail and remind you to add one.
+
+### Required GitHub Secrets
+
+To enable automatic releases, add these secrets in GitHub repo settings:
+
+**Apple Credentials (for code signing & notarization):**
+- `APPLE_ID` - Your Apple ID email
+- `APPLE_PASSWORD` - App-specific password from appleid.apple.com
+- `APPLE_TEAM_ID` - Your Apple Developer Team ID
+
+**Update Signing (for OTA updates):**
+- `TAURI_SIGNING_PRIVATE_KEY` - Content of `.tauri-signing-key.txt`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` - Password you used when generating keys
+
+**How to generate update signing keys:**
+```bash
+npm run tauri signer generate -- --password "your-secure-password" -w .tauri-signing-key.txt --ci
+```
+
+Then add the content of `.tauri-signing-key.txt` to GitHub Secrets.
+
+### Update Channels
+
+**Production Channel:**
+- App: `Cushion.app`
+- Bundle ID: `com.cushion.desktop`
+- Checks: `latest.json`
+- Users: Stable release users
+
+**Dev Channel:**
+- App: `Cushion Developer.app`
+- Bundle ID: `com.cushion.desktop.dev`
+- Checks: `latest-dev.json`
+- Users: Internal testing & development
+
+Both apps can coexist on the same machine.
+
+### Update Manifest Format
+
+The update system uses JSON manifests that GitHub Actions generates automatically:
+
+```json
+{
+  "version": "0.1.0",
+  "notes": "Release notes...",
+  "pub_date": "2025-10-12T10:00:00Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "base64-signature",
+      "url": "https://github.com/.../Cushion.app.tar.gz"
+    }
+  }
+}
+```
+
+### Migration to Public Beta
+
+When ready to release publicly:
+
+1. Create `cushioncomputing/cushion-desktop-updates` repository (public)
+2. Update endpoints in `build-config.js`:
+   ```javascript
+   // Change from:
+   'https://github.com/cushioncomputing/cushion-desktop/releases/...'
+   // To:
+   'https://github.com/cushioncomputing/cushion-desktop-updates/releases/...'
+   ```
+3. Update `.github/workflows/release.yml` to publish to new repo
+4. Release new version with updated endpoints
+5. All users will migrate to new update source automatically
+
+See `OTA-UPDATES-PLAN.md` for detailed migration instructions.
 
 ## Authentication Flow
 
 ### Magic Link Support
+
 The desktop app fully supports magic link authentication:
 
 1. **Desktop users** get magic links that redirect to `cushion://auth/success`
@@ -115,6 +343,7 @@ The desktop app fully supports magic link authentication:
 3. **Automatic detection** based on client context
 
 ### How It Works
+
 1. User clicks "Sign in with email" in desktop app
 2. Email is sent with desktop-specific magic link
 3. User clicks link in email
@@ -123,33 +352,35 @@ The desktop app fully supports magic link authentication:
 
 ## Deep Link Testing
 
-Test the deep link functionality:
-```bash
-# macOS/Linux
-open "cushion://auth/success?token=test&callbackUrl=%2Fdashboard"
+Test the deep link functionality on macOS:
 
-# Windows
-start "cushion://auth/success?token=test&callbackUrl=%2Fdashboard"
+```bash
+npm run test:deep-links
+
+# Or manually:
+open "cushion://auth/success?token=test&callbackUrl=%2Fdashboard"
 ```
 
 ## Native Features
 
 ### Push Notifications
+
 ```javascript
 // Available via Tauri commands
-await invoke('show_notification', {
-  title: 'New Message',
-  body: 'You have a new message in #general'
+await invoke("show_notification", {
+  title: "New Message",
+  body: "You have a new message in #general",
 });
 ```
 
-### Desktop Detection
+### Desktop & Mobile Detection
+
 ```javascript
-// Check if running in desktop app
-import { isTauriApp } from '@/lib/tauri';
+// Check if running in Tauri app (desktop or mobile)
+import { isTauriApp } from "@/lib/tauri";
 
 if (isTauriApp()) {
-  // Desktop-specific functionality
+  // Native app-specific functionality
 }
 ```
 
@@ -164,10 +395,14 @@ if (isTauriApp()) {
 ### Key Configuration Options
 
 - **Development URL**: Points to `http://localhost:3000` (web-app dev server)
-- **Production Build**: Uses `../../web-app/out` (static build output)
-- **Window Settings**: 1200x800 default, 800x600 minimum
+- **Production Build**: Dynamically configured via `build-config.js`
+- **Window Settings**: Configured in `tauri.conf.json`
 - **App Identifier**: `com.cushion.desktop`
 - **Icons**: Located in `src-tauri/icons/`
+- **Build Modes**:
+  - Default: Production build with optimized settings
+  - `TAURI_BUILD_DEV=true`: Quick debug build for development
+  - `TAURI_BUILD_TEST=true`: Test build pointing to localhost
 
 ## Project Structure
 
@@ -177,24 +412,40 @@ cushion-desktop/
 │   ├── src/
 │   │   ├── main.rs           # Main Tauri application entry
 │   │   └── lib.rs            # Library functions
-│   ├── icons/                # App icons for all platforms
+│   ├── icons/                # App icons (.icns files)
+│   │   ├── icon.icns         # Production icon
+│   │   └── dev-icon.icns     # Development icon
 │   ├── capabilities/         # Tauri permissions
 │   ├── gen/                  # Generated platform code
 │   │   └── apple/            # iOS Xcode project
 │   ├── Cargo.toml           # Rust dependencies
 │   └── tauri.conf.json      # Tauri configuration
+├── build-config.js           # Dynamic build configuration
+├── create-dev-dmg.sh         # Creates .dmg from .app bundle
+├── generate-icons.sh         # Icon generation script
 ├── src/                      # Frontend placeholder (unused)
-└── package.json             # NPM configuration
+└── package.json             # NPM scripts and dependencies
 ```
 
 ## Integration with Web App
 
 The desktop app integrates with the main Cushion web application by:
 
-1. **Development**: Starting the web-app dev server (`npm run dev`) and connecting to `localhost:3000`
-2. **Production**: Serving static files from the web-app build output
+1. **Development**: Connecting to the web-app dev server at `localhost:3000` (start with `npm run dev` in `../web-app`)
+2. **Production**: Configuration determined by `build-config.js` at build time
 3. **APIs**: All API calls go through the same endpoints as the web version
 4. **Authentication**: Uses the same NextAuth.js authentication flow
+
+### Build Configuration
+
+The `build-config.js` script dynamically configures Tauri builds based on environment variables:
+
+- Reads from `../web-app/package.json` for dependencies and configuration
+- Adjusts build settings based on `TAURI_BUILD_TEST` or `TAURI_BUILD_DEV` flags
+- Manages production vs. development URLs
+- Creates separate apps with different bundle IDs:
+  - **Dev**: `com.cushion.desktop.dev` with `cushion-dev://` deep links
+  - **Prod**: `com.cushion.desktop` with `cushion://` deep links
 
 ## iOS Specific Features
 
@@ -205,38 +456,69 @@ The desktop app integrates with the main Cushion web application by:
 
 ## Distribution
 
-### Desktop
+### macOS
 
-- **macOS**: .dmg installer
-- **Windows**: .msi installer  
-- **Linux**: .deb and .rpm packages
+- **.dmg installer**: Universal app bundle for direct download
+- **App Store**: (Future) Distribution through Mac App Store
 
 ### iOS
 
-- App Store distribution through Xcode
-- TestFlight beta testing
-- Enterprise distribution (if applicable)
+- **App Store**: Distribution through Apple App Store
+- **TestFlight**: Beta testing platform
+- **Ad Hoc**: Development and testing builds
 
 ## Development Workflow
 
-1. Make changes to the web application (`../web-app`)
-2. Test in desktop app with `npm run dev:desktop`
-3. Test in iOS simulator with `npm run dev:ios`
-4. Build for distribution with `npm run build:desktop` or `npm run build:ios`
+1. Start the web app dev server from `../web-app`:
+
+   ```bash
+   cd ../web-app && npm run dev
+   ```
+
+2. Start the desktop app:
+
+   ```bash
+   npm run dev
+   ```
+
+3. Make changes to the web application and test in real-time
+
+4. For quick testing of builds:
+
+   ```bash
+   npm run build:dev  # Creates a .dmg for quick testing
+   ```
+
+5. For production builds:
+
+   ```bash
+   npm run build  # Full production build
+   ```
+
+6. For iOS development:
+   ```bash
+   npm run dev:ios  # iOS simulator
+   npm run build:ios  # iOS production build
+   ```
 
 ## Troubleshooting
 
 ### Common Issues
 
 - **Port conflicts**: Ensure web-app is running on port 3000
-- **Build failures**: Check that web-app builds successfully first
+- **Build failures**:
+  - Check that `build-config.js` runs successfully
+  - Verify `../web-app/package.json` exists and is valid
+  - For test builds, ensure `localhost:3000` is accessible
 - **iOS simulator issues**: Restart simulator or use `xcrun simctl list devices`
+- **Dev build DMG creation**: Ensure `create-dev-dmg.sh` has execute permissions
 
 ### Development Tips
 
-- Use Safari Developer Tools for debugging the iOS webview
-- Desktop webview debugging available through system browser dev tools
-- Hot reload works for both desktop and mobile during development
+- **iOS debugging**: Use Safari Developer Tools (Safari → Develop → Simulator)
+- **macOS debugging**: Right-click in app and select "Inspect Element"
+- **Hot reload**: Works automatically for both desktop and mobile during development
+- **Build issues**: Run `cargo clean` in `src-tauri/` directory if you encounter strange build errors
 
 ## Contributing
 

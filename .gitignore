@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (contains sensitive credentials)
+.env
+.env.local
+.env.*.local
+
+# Tauri update signing keys (NEVER commit these!)
+.tauri-signing-key.txt
+.tauri-signing-key.txt.pub
+
+# Claude settings (contains local permissions and credentials)
+.claude/settings.local.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
