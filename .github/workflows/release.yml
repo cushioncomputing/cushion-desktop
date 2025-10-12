@@ -82,19 +82,8 @@ jobs:
           # Build with Tauri
           # Note: updater artifacts (.tar.gz and .sig) are created automatically when
           # TAURI_SIGNING_PRIVATE_KEY is set and updater plugin is active
-          npm run tauri build -- --bundles app --target aarch64-apple-darwin
-
-      - name: Create production DMG
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          # Run notarize-dmg script
-          ./notarize-dmg.sh \
-            "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Cushion.app" \
-            "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/Cushion_${{ github.ref_name }}_aarch64.dmg" \
-            "Cushion"
+          # dmg bundle creates proper installer DMG with drag-to-Applications interface
+          npm run tauri build -- --bundles app,dmg --target aarch64-apple-darwin
 
       - name: Generate update manifest (latest.json)
         run: |
@@ -203,22 +192,8 @@ jobs:
           # Build with Tauri (debug mode for faster builds)
           # Note: updater artifacts (.tar.gz and .sig) are created automatically when
           # TAURI_SIGNING_PRIVATE_KEY is set and updater plugin is active
-          npm run tauri build -- --debug --bundles app --target aarch64-apple-darwin
-
-      - name: Create dev DMG
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          # Create DMG directory if it doesn't exist
-          mkdir -p "src-tauri/target/aarch64-apple-darwin/debug/bundle/dmg"
-
-          # Create DMG (no notarization for dev builds to save time)
-          hdiutil create -volname "Cushion Developer" \
-            -srcfolder "src-tauri/target/aarch64-apple-darwin/debug/bundle/macos/Cushion Developer.app" \
-            -ov -format UDZO \
-            "src-tauri/target/aarch64-apple-darwin/debug/bundle/dmg/Cushion_Developer_${{ github.ref_name }}_aarch64.dmg"
+          # dmg bundle creates proper installer DMG with drag-to-Applications interface
+          npm run tauri build -- --debug --bundles app,dmg --target aarch64-apple-darwin
 
       - name: Generate dev update manifest (latest-dev.json)
         run: |
