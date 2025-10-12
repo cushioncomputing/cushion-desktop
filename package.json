@@ -8,17 +8,19 @@
     "dev": "tauri dev",
     "dev:desktop": "tauri dev",
     "dev:ios": "tauri ios dev",
-    "build": "node build-config.js && tauri build",
-    "build:test": "TAURI_BUILD_TEST=true node build-config.js && tauri build --debug",
+    "build": "dotenv -e .env -- ./build-prod.sh",
+    "build:test": "TAURI_BUILD_TEST=true node build-config.js && tauri build --debug --bundles app",
     "build:dev": "TAURI_BUILD_DEV=true node build-config.js && tauri build --debug --bundles app && ./create-dev-dmg.sh",
-    "build:desktop": "node build-config.js && tauri build",
+    "build:desktop": "dotenv -e .env -- ./build-prod.sh",
+    "build:app-only": "dotenv -e .env -- bash -c 'node build-config.js && tauri build --bundles app'",
     "build:ios": "tauri ios build",
     "setup:ios": "tauri ios init",
     "setup:android": "tauri android init",
     "test:deep-links": "open cushion://auth/success?token=test&callbackUrl=%2Fdashboard"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2",
+    "dotenv-cli": "^10.0.0"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",

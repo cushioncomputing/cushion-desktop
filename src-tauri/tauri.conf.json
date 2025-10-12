@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Cushion Developer",
+  "productName": "Cushion",
   "version": "0.1.0",
-  "identifier": "com.cushion.desktop.dev",
+  "identifier": "com.cushion.desktop",
   "build": {
-    "devUrl": "http://localhost:3000",
-    "frontendDist": "http://localhost:3000",
+    "devUrl": "https://app.cushion.so",
+    "frontendDist": "https://app.cushion.so",
     "beforeBuildCommand": ""
   },
   "app": {
@@ -51,8 +51,8 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "icons/dev-icon.icns",
-      "icons/dev-icon.ico"
+      "icons/icon.icns",
+      "icons/icon.ico"
     ],
     "publisher": "Cushion",
     "copyright": "Copyright © 2025 Cushion. All rights reserved.",
@@ -68,7 +68,7 @@
     "deep-link": {
       "desktop": {
         "schemes": [
-          "cushion-dev"
+          "cushion"
         ]
       }
     }

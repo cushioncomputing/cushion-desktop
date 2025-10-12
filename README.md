@@ -113,7 +113,7 @@ npm run test:deep-links
 
 ## Building for Production
 
-### Production Build
+### Production Build (Fully Automated)
 
 ```bash
 npm run build
@@ -121,11 +121,35 @@ npm run build
 npm run build:desktop
 ```
 
-This will:
+This single command automatically:
 
-1. Run `build-config.js` to configure the Tauri build
-2. Build the Tauri app in release mode
-3. Create platform-specific installers in `src-tauri/target/release/bundle/`
+1. ✅ Loads Apple credentials from `.env`
+2. ✅ Configures the build via `build-config.js`
+3. ✅ Builds the Tauri app in release mode
+4. ✅ **Signs** the app with your Developer ID
+5. ✅ **Notarizes** the app with Apple
+6. ✅ Creates a **.dmg** installer
+7. ✅ **Notarizes** the DMG with Apple
+8. ✅ **Staples** the notarization ticket to the DMG
+9. ✅ Verifies everything is ready for distribution
+
+**Output:**
+- `src-tauri/target/release/bundle/macos/Cushion.app` - Notarized app
+- `src-tauri/target/release/bundle/dmg/Cushion_0.1.0_aarch64.dmg` - Notarized DMG
+
+**No trust warnings!** Users can install and run the app immediately without security warnings.
+
+### Prerequisites for Notarization
+
+Create a `.env` file with your Apple credentials:
+
+```bash
+APPLE_ID=your.email@example.com
+APPLE_PASSWORD=xxxx-xxxx-xxxx-xxxx  # App-specific password
+APPLE_TEAM_ID=XXXXXXXXXX
+```
+
+**Note:** The `.env` file is already in `.gitignore` to keep credentials secure.
 
 ### Development Builds
 
@@ -137,10 +161,14 @@ npm run build:dev
 
 # Test build (debug mode, preserves dev server URL for testing)
 npm run build:test
+
+# Build app only (no DMG, faster)
+npm run build:app-only
 ```
 
-- `build:dev` - Creates a debug build with only the `.app` bundle and wraps it in a `.dmg` for quick testing
-- `build:test` - Creates a test build that points to `localhost:3000` for debugging production builds
+- `build:dev` - Creates a debug build with dev app ID (`com.cushion.desktop.dev`) and wraps in a `.dmg`
+- `build:test` - Creates a test build that points to `localhost:3000` for debugging
+- `build:app-only` - Notarized `.app` only, no DMG (faster for quick iterations)
 
 ### iOS Build
 
@@ -152,6 +180,18 @@ npm run build:ios
 
 - **macOS**: `.dmg` and `.app` files in `src-tauri/target/release/bundle/macos/`
 - **iOS**: `.ipa` file for App Store distribution (via Xcode)
+
+### Signing & Notarization Details
+
+The build process uses these scripts:
+- `build-prod.sh` - Orchestrates the full production build
+- `notarize-dmg.sh` - Handles DMG creation and notarization
+
+**What gets notarized:**
+1. The `.app` bundle (Tauri handles this automatically)
+2. The `.dmg` installer (via `notarize-dmg.sh`)
+
+Both are fully notarized and stapled, so users never see trust warnings.
 
 ## Authentication Flow
 
