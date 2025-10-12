@@ -17,6 +17,10 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Tauri update signing keys (NEVER commit these!)
+.tauri-signing-key.txt
+.tauri-signing-key.txt.pub
+
 # Claude settings (contains local permissions and credentials)
 .claude/settings.local.json
 

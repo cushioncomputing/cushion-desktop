@@ -193,6 +193,145 @@ The build process uses these scripts:
 
 Both are fully notarized and stapled, so users never see trust warnings.
 
+## Releases & OTA Updates
+
+### Automatic Updates
+
+The app includes built-in OTA (Over-The-Air) update functionality:
+
+- ✅ Automatically checks for updates on startup
+- ✅ Downloads and verifies updates with signature verification
+- ✅ Notifies users when updates are available
+- ✅ Installs updates with a single click
+- ✅ Separate update channels for dev and production builds
+
+**Current Setup (Internal Testing):**
+- Updates served from private GitHub Releases
+- Works for team members with GitHub authentication
+- Production apps check `latest.json`
+- Dev apps check `latest-dev.json`
+
+**Future Setup (Public Beta):**
+- Will migrate to public `cushion-desktop-updates` repository
+- Updates accessible to all users without authentication
+
+### Releasing a New Version
+
+**Automated Version Bumping (Recommended):**
+
+1. **Create PR with your changes**
+2. **Add version label** to PR:
+   - `version:patch` - Bug fixes (0.1.0 → 0.1.1)
+   - `version:minor` - New features (0.1.0 → 0.2.0)
+   - `version:major` - Breaking changes (0.1.0 → 1.0.0)
+3. **Merge PR** → GitHub Actions automatically:
+   - Bumps version across all files
+   - Commits version change
+   - Triggers release build
+   - Creates GitHub Release
+   - Team members' apps auto-update!
+
+**Manual Version Bumping (Alternative):**
+
+If you prefer to bump versions manually:
+
+```bash
+# For patch releases (0.1.0 → 0.1.1)
+npm run version:patch
+
+# For minor releases (0.1.0 → 0.2.0)
+npm run version:minor
+
+# For major releases (0.1.0 → 1.0.0)
+npm run version:major
+
+# Check current versions
+npm run version:check
+```
+
+This automatically syncs the version across:
+- `package.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/tauri.conf.json`
+
+Then commit and push to trigger the release.
+
+**Version Sync Protection:**
+
+GitHub Actions automatically checks that versions are synced in PRs. If they're out of sync and you don't have a version label, the check will fail and remind you to add one.
+
+### Required GitHub Secrets
+
+To enable automatic releases, add these secrets in GitHub repo settings:
+
+**Apple Credentials (for code signing & notarization):**
+- `APPLE_ID` - Your Apple ID email
+- `APPLE_PASSWORD` - App-specific password from appleid.apple.com
+- `APPLE_TEAM_ID` - Your Apple Developer Team ID
+
+**Update Signing (for OTA updates):**
+- `TAURI_SIGNING_PRIVATE_KEY` - Content of `.tauri-signing-key.txt`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` - Password you used when generating keys
+
+**How to generate update signing keys:**
+```bash
+npm run tauri signer generate -- --password "your-secure-password" -w .tauri-signing-key.txt --ci
+```
+
+Then add the content of `.tauri-signing-key.txt` to GitHub Secrets.
+
+### Update Channels
+
+**Production Channel:**
+- App: `Cushion.app`
+- Bundle ID: `com.cushion.desktop`
+- Checks: `latest.json`
+- Users: Stable release users
+
+**Dev Channel:**
+- App: `Cushion Developer.app`
+- Bundle ID: `com.cushion.desktop.dev`
+- Checks: `latest-dev.json`
+- Users: Internal testing & development
+
+Both apps can coexist on the same machine.
+
+### Update Manifest Format
+
+The update system uses JSON manifests that GitHub Actions generates automatically:
+
+```json
+{
+  "version": "0.1.0",
+  "notes": "Release notes...",
+  "pub_date": "2025-10-12T10:00:00Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "base64-signature",
+      "url": "https://github.com/.../Cushion.app.tar.gz"
+    }
+  }
+}
+```
+
+### Migration to Public Beta
+
+When ready to release publicly:
+
+1. Create `cushioncomputing/cushion-desktop-updates` repository (public)
+2. Update endpoints in `build-config.js`:
+   ```javascript
+   // Change from:
+   'https://github.com/cushioncomputing/cushion-desktop/releases/...'
+   // To:
+   'https://github.com/cushioncomputing/cushion-desktop-updates/releases/...'
+   ```
+3. Update `.github/workflows/release.yml` to publish to new repo
+4. Release new version with updated endpoints
+5. All users will migrate to new update source automatically
+
+See `OTA-UPDATES-PLAN.md` for detailed migration instructions.
+
 ## Authentication Flow
 
 ### Magic Link Support

@@ -51,6 +51,13 @@ if (isTestMode) {
   ];
   config.plugins['deep-link'].desktop.schemes = ['cushion-dev'];
 
+  // Dev build checks for latest-dev.json
+  // TODO: When ready for public beta, switch to cushion-desktop-updates repo:
+  // "https://github.com/cushioncomputing/cushion-desktop-updates/releases/latest/download/latest-dev.json"
+  config.plugins.updater.endpoints = [
+    'https://github.com/cushioncomputing/cushion-desktop/releases/latest/download/latest-dev.json'
+  ];
+
   // Write the modified config
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 
@@ -73,6 +80,14 @@ if (isTestMode) {
     'icons/icon.ico'
   ];
   config.plugins['deep-link'].desktop.schemes = ['cushion'];
+
+  // Production build checks for latest.json
+  // Currently uses private repo (works for internal team with GitHub auth)
+  // TODO: When ready for public beta, switch to cushion-desktop-updates repo:
+  // "https://github.com/cushioncomputing/cushion-desktop-updates/releases/latest/download/latest.json"
+  config.plugins.updater.endpoints = [
+    'https://github.com/cushioncomputing/cushion-desktop/releases/latest/download/latest.json'
+  ];
 
   // Write the modified config
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));

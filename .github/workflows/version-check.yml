@@ -1,0 +1,76 @@
+name: Version Sync Check
+
+# Check that versions are synced across all files in PRs
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'package.json'
+      - 'src-tauri/Cargo.toml'
+      - 'src-tauri/tauri.conf.json'
+
+jobs:
+  check-version-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check version synchronization
+        run: |
+          echo "Checking if versions are synchronized..."
+
+          # Get versions from each file
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          CARGO_VERSION=$(grep '^version = ' src-tauri/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          TAURI_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+
+          echo "package.json:           $PKG_VERSION"
+          echo "src-tauri/Cargo.toml:   $CARGO_VERSION"
+          echo "src-tauri/tauri.conf.json: $TAURI_VERSION"
+
+          # Check if all versions match
+          if [ "$PKG_VERSION" = "$CARGO_VERSION" ] && [ "$PKG_VERSION" = "$TAURI_VERSION" ]; then
+            echo "✅ All versions are synchronized: $PKG_VERSION"
+            exit 0
+          else
+            echo "❌ Version mismatch detected!"
+            echo ""
+            echo "To fix this, run one of these commands locally:"
+            echo "  npm run version:patch   # for patch releases (0.1.0 → 0.1.1)"
+            echo "  npm run version:minor   # for minor releases (0.1.0 → 0.2.0)"
+            echo "  npm run version:major   # for major releases (0.1.0 → 1.0.0)"
+            echo ""
+            echo "Or add a label to your PR:"
+            echo "  - version:patch"
+            echo "  - version:minor"
+            echo "  - version:major"
+            echo ""
+            echo "The version will be bumped automatically when the PR is merged."
+            exit 1
+          fi
+
+      - name: Check for version label
+        if: failure()
+        run: |
+          LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+
+          if echo "$LABELS" | grep -qE "version:(patch|minor|major)"; then
+            echo "✅ Version label found - will auto-bump on merge"
+            exit 0
+          else
+            echo "⚠️  No version label found"
+            echo "Add a version:patch, version:minor, or version:major label to auto-bump on merge"
+            exit 1
+          fi

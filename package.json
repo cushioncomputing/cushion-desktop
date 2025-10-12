@@ -16,7 +16,11 @@
     "build:ios": "tauri ios build",
     "setup:ios": "tauri ios init",
     "setup:android": "tauri android init",
-    "test:deep-links": "open cushion://auth/success?token=test&callbackUrl=%2Fdashboard"
+    "test:deep-links": "open cushion://auth/success?token=test&callbackUrl=%2Fdashboard",
+    "version:major": "node scripts/sync-version.js major",
+    "version:minor": "node scripts/sync-version.js minor",
+    "version:patch": "node scripts/sync-version.js patch",
+    "version:check": "node scripts/sync-version.js"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
@@ -24,6 +28,8 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",
-    "@tauri-apps/plugin-notification": "^2.3.1"
+    "@tauri-apps/plugin-dialog": "^2.4.0",
+    "@tauri-apps/plugin-notification": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.9.0"
   }
 }

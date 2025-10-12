@@ -1,0 +1,293 @@
+name: Release
+
+# Trigger on push to main branch
+# TODO: Consider using tags instead when you want more control
+on:
+  push:
+    branches:
+      - main
+
+# Permissions needed to create releases
+permissions:
+  contents: write
+
+jobs:
+  # Build production version
+  build-prod:
+    name: Build Production (macOS)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build production app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          # Configure for production
+          node build-config.js
+
+          # Build with Tauri
+          npm run tauri build -- --bundles app,updater --target aarch64-apple-darwin
+
+      - name: Create production DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Run notarize-dmg script
+          ./notarize-dmg.sh \
+            "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Cushion.app" \
+            "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/Cushion_${{ github.ref_name }}_aarch64.dmg" \
+            "Cushion"
+
+      - name: Generate update manifest (latest.json)
+        run: |
+          # Get version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+
+          # Get signature from .sig file
+          SIG=$(cat src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Cushion.app.tar.gz.sig)
+
+          # Create latest.json manifest
+          # Currently using private repo - TODO: Switch to cushion-desktop-updates for public beta
+          cat > latest.json << EOF
+          {
+            "version": "${VERSION}",
+            "notes": "See release notes at https://github.com/cushioncomputing/cushion-desktop/releases/tag/v${VERSION}",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "darwin-aarch64": {
+                "signature": "${SIG}",
+                "url": "https://github.com/cushioncomputing/cushion-desktop/releases/download/v${VERSION}/Cushion.app.tar.gz"
+              }
+            }
+          }
+          EOF
+
+          cat latest.json
+
+      - name: Upload production artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-macos-aarch64
+          path: |
+            src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Cushion.app.tar.gz
+            src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Cushion.app.tar.gz.sig
+            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            latest.json
+
+  # Build dev version
+  build-dev:
+    name: Build Dev (macOS)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build dev app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_BUILD_DEV: true
+        run: |
+          # Configure for dev
+          node build-config.js
+
+          # Build with Tauri (debug mode for faster builds)
+          npm run tauri build -- --debug --bundles app,updater --target aarch64-apple-darwin
+
+      - name: Create dev DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Create DMG (no notarization for dev builds to save time)
+          hdiutil create -volname "Cushion Developer" \
+            -srcfolder "src-tauri/target/aarch64-apple-darwin/debug/bundle/macos/Cushion Developer.app" \
+            -ov -format UDZO \
+            "src-tauri/target/aarch64-apple-darwin/debug/bundle/dmg/Cushion_Developer_${{ github.ref_name }}_aarch64.dmg"
+
+      - name: Generate dev update manifest (latest-dev.json)
+        run: |
+          # Get version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+
+          # Get signature from .sig file
+          SIG=$(cat "src-tauri/target/aarch64-apple-darwin/debug/bundle/macos/Cushion Developer.app.tar.gz.sig")
+
+          # Create latest-dev.json manifest
+          # Currently using private repo - TODO: Switch to cushion-desktop-updates for public beta
+          cat > latest-dev.json << EOF
+          {
+            "version": "${VERSION}",
+            "notes": "Development build - See release notes at https://github.com/cushioncomputing/cushion-desktop/releases/tag/v${VERSION}",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "darwin-aarch64": {
+                "signature": "${SIG}",
+                "url": "https://github.com/cushioncomputing/cushion-desktop/releases/download/v${VERSION}/Cushion-Developer.app.tar.gz"
+              }
+            }
+          }
+          EOF
+
+          cat latest-dev.json
+
+      - name: Upload dev artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-macos-aarch64
+          path: |
+            src-tauri/target/aarch64-apple-darwin/debug/bundle/macos/Cushion Developer.app.tar.gz
+            src-tauri/target/aarch64-apple-darwin/debug/bundle/macos/Cushion Developer.app.tar.gz.sig
+            src-tauri/target/aarch64-apple-darwin/debug/bundle/dmg/*.dmg
+            latest-dev.json
+
+  # Create GitHub Release with both versions
+  publish:
+    name: Publish Release
+    needs: [build-prod, build-dev]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Download production artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: prod-macos-aarch64
+          path: ./prod
+
+      - name: Download dev artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-macos-aarch64
+          path: ./dev
+
+      - name: Rename files for release
+        run: |
+          # Production files
+          mv prod/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Cushion.app.tar.gz ./Cushion.app.tar.gz
+          mv prod/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Cushion.app.tar.gz.sig ./Cushion.app.tar.gz.sig
+          mv prod/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg ./Cushion_${{ steps.version.outputs.version }}_aarch64.dmg
+          mv prod/latest.json ./latest.json
+
+          # Dev files
+          mv "dev/src-tauri/target/aarch64-apple-darwin/debug/bundle/macos/Cushion Developer.app.tar.gz" ./Cushion-Developer.app.tar.gz
+          mv "dev/src-tauri/target/aarch64-apple-darwin/debug/bundle/macos/Cushion Developer.app.tar.gz.sig" ./Cushion-Developer.app.tar.gz.sig
+          mv dev/src-tauri/target/aarch64-apple-darwin/debug/bundle/dmg/*.dmg ./Cushion_Developer_${{ steps.version.outputs.version }}_aarch64.dmg
+          mv dev/latest-dev.json ./latest-dev.json
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          cat > release-notes.md << 'EOF'
+          ## What's New
+
+          See commit history for changes in this release.
+
+          ## Installation
+
+          ### Production Version
+          - Download `Cushion_${{ steps.version.outputs.version }}_aarch64.dmg`
+          - Open the DMG and drag Cushion to Applications
+          - Your app will auto-update from this point forward
+
+          ### Dev Version (Internal Testing)
+          - Download `Cushion_Developer_${{ steps.version.outputs.version }}_aarch64.dmg`
+          - Open the DMG and drag Cushion Developer to Applications
+          - Dev builds check for updates more frequently
+
+          ## Auto-Updates
+
+          Both versions support automatic updates:
+          - Production apps check `latest.json`
+          - Dev apps check `latest-dev.json`
+
+          **Note:** Currently using private repo. Updates work for team members with GitHub authentication.
+          When ready for public beta, migrate to `cushion-desktop-updates` public repo.
+
+          ## Technical Details
+
+          - Version: ${{ steps.version.outputs.version }}
+          - Platform: macOS Apple Silicon (arm64)
+          - Signed & Notarized: Yes
+          - Update Channel: Private GitHub Releases
+          EOF
+
+          cat release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+          files: |
+            Cushion.app.tar.gz
+            Cushion.app.tar.gz.sig
+            Cushion_${{ steps.version.outputs.version }}_aarch64.dmg
+            Cushion-Developer.app.tar.gz
+            Cushion-Developer.app.tar.gz.sig
+            Cushion_Developer_${{ steps.version.outputs.version }}_aarch64.dmg
+            latest.json
+            latest-dev.json

@@ -20,6 +20,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .skip_initial_state("main")
@@ -38,6 +40,9 @@ pub fn run() {
             commands::window::is_window_minimized,
             commands::window::set_zoom_level,
             commands::system::open_url,
+            commands::updater::check_for_updates,
+            commands::updater::install_update,
+            commands::updater::get_app_version,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
