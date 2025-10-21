@@ -1,6 +1,6 @@
 [package]
 name = "Cushion"
-version = "0.1.0"
+version = "0.2.0"
 description = "Cushion Desktop - Async team collaboration tool"
 authors = ["Cushion"]
 edition = "2021"
