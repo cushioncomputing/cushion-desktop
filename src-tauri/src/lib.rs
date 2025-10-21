@@ -73,6 +73,9 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // Setup deep link handling
     setup_deep_links(app.handle());
 
+    // Setup notification click handling
+    commands::notification::setup_notification_click_handler(app.handle());
+
     // Handle dock icon clicks (macOS)
     #[cfg(target_os = "macos")]
     {
