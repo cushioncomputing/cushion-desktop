@@ -76,6 +76,9 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // Setup notification click handling
     commands::notification::setup_notification_click_handler(app.handle());
 
+    // Check for updates on startup
+    setup_auto_update_check(app.handle());
+
     // Handle dock icon clicks (macOS)
     #[cfg(target_os = "macos")]
     {
@@ -184,6 +187,97 @@ fn setup_deep_links(handle: &tauri::AppHandle) {
                     let _ = window.set_focus();
                     let _ = window.unminimize();
                 }
+            }
+        }
+    });
+}
+
+/// Setup automatic update checking on app startup
+fn setup_auto_update_check(handle: &tauri::AppHandle) {
+    use tauri_plugin_updater::UpdaterExt;
+    use tauri_plugin_notification::NotificationExt;
+
+    let app = handle.clone();
+
+    // Spawn async task to check for updates
+    tauri::async_runtime::spawn(async move {
+        println!("🔄 Checking for updates...");
+
+        match app.updater_builder().build() {
+            Ok(updater) => {
+                match updater.check().await {
+                    Ok(Some(update)) => {
+                        let version = update.version.clone();
+                        println!("✅ Update available: {}", version);
+
+                        // Show native macOS notification
+                        let notification_result = app.notification()
+                            .builder()
+                            .title("Update Available")
+                            .body(&format!("Cushion {} is available. Click to install.", version))
+                            .show();
+
+                        if let Err(e) = notification_result {
+                            println!("❌ Failed to show update notification: {}", e);
+                        } else {
+                            println!("📬 Update notification shown");
+
+                            // Listen for notification click to trigger install
+                            let app_clone = app.clone();
+                            app.listen("notification://clicked", move |event| {
+                                let payload = event.payload();
+                                if payload.contains("Update Available") || payload.contains("Cushion") {
+                                    println!("🔔 Update notification clicked, starting installation...");
+
+                                    let app_for_install = app_clone.clone();
+                                    tauri::async_runtime::spawn(async move {
+                                        match app_for_install.updater_builder().build() {
+                                            Ok(updater) => {
+                                                match updater.check().await {
+                                                    Ok(Some(update)) => {
+                                                        println!("⬇️  Installing update: {}", update.version);
+
+                                                        match update.download_and_install(|chunk_length, content_length| {
+                                                            if let Some(total) = content_length {
+                                                                let percentage = (chunk_length as f64 / total as f64) * 100.0;
+                                                                println!("📊 Download progress: {:.1}%", percentage);
+                                                            }
+                                                        }, || {
+                                                            println!("✅ Update downloaded, installing...");
+                                                        }).await {
+                                                            Ok(_) => {
+                                                                println!("🎉 Update installed! Restarting...");
+                                                                // App will restart automatically
+                                                            }
+                                                            Err(e) => {
+                                                                println!("❌ Failed to install update: {}", e);
+                                                            }
+                                                        }
+                                                    }
+                                                    _ => {
+                                                        println!("❌ No update found when trying to install");
+                                                    }
+                                                }
+                                            }
+                                            Err(e) => {
+                                                println!("❌ Failed to build updater for install: {}", e);
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    }
+                    Ok(None) => {
+                        println!("✅ App is up to date");
+                    }
+                    Err(e) => {
+                        println!("❌ Error checking for updates: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                println!("❌ Failed to build updater: {}", e);
             }
         }
     });
