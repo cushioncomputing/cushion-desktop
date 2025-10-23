@@ -218,59 +218,40 @@ fn setup_auto_update_check(handle: &tauri::AppHandle) {
                             version
                         );
 
-                        let app_clone = app.clone();
                         let confirmed = app.dialog()
                             .message(message)
                             .title("Software Update")
-                            .kind(MessageDialogKind::Info)
                             .buttons(MessageDialogButtons::OkCancelCustom("Install Update".into(), "Not Now".into()))
                             .blocking_show();
 
                         if confirmed {
                             println!("✅ User confirmed update installation");
+                            println!("⬇️  Installing update: {}", update.version);
 
-                            // Start installation in background
-                            tauri::async_runtime::spawn(async move {
-                                match app_clone.updater_builder().build() {
-                                    Ok(updater) => {
-                                        match updater.check().await {
-                                            Ok(Some(update)) => {
-                                                println!("⬇️  Installing update: {}", update.version);
-
-                                                match update.download_and_install(|chunk_length, content_length| {
-                                                    if let Some(total) = content_length {
-                                                        let percentage = (chunk_length as f64 / total as f64) * 100.0;
-                                                        println!("📊 Download progress: {:.1}%", percentage);
-                                                    }
-                                                }, || {
-                                                    println!("✅ Update downloaded, installing...");
-                                                }).await {
-                                                    Ok(_) => {
-                                                        println!("🎉 Update installed! Restarting...");
-                                                        // App will restart automatically
-                                                    }
-                                                    Err(e) => {
-                                                        println!("❌ Failed to install update: {}", e);
-
-                                                        // Show error dialog
-                                                        let _ = app_clone.dialog()
-                                                            .message(format!("Failed to install update: {}", e))
-                                                            .title("Update Error")
-                                                            .kind(MessageDialogKind::Error)
-                                                            .blocking_show();
-                                                    }
-                                                }
-                                            }
-                                            _ => {
-                                                println!("❌ No update found when trying to install");
-                                            }
-                                        }
-                                    }
-                                    Err(e) => {
-                                        println!("❌ Failed to build updater for install: {}", e);
-                                    }
+                            // Continue installation in same async context
+                            match update.download_and_install(|chunk_length, content_length| {
+                                if let Some(total) = content_length {
+                                    let percentage = (chunk_length as f64 / total as f64) * 100.0;
+                                    println!("📊 Download progress: {:.1}%", percentage);
                                 }
-                            });
+                            }, || {
+                                println!("✅ Update downloaded, installing...");
+                            }).await {
+                                Ok(_) => {
+                                    println!("🎉 Update installed! Restarting...");
+                                    // App will restart automatically
+                                }
+                                Err(e) => {
+                                    println!("❌ Failed to install update: {}", e);
+
+                                    // Show error dialog
+                                    let _ = app.dialog()
+                                        .message(format!("Failed to install update: {}", e))
+                                        .title("Update Error")
+                                        .kind(MessageDialogKind::Error)
+                                        .blocking_show();
+                                }
+                            }
                         } else {
                             println!("ℹ️  User declined update installation");
                         }
