@@ -195,7 +195,7 @@ fn setup_deep_links(handle: &tauri::AppHandle) {
 /// Setup automatic update checking on app startup
 fn setup_auto_update_check(handle: &tauri::AppHandle) {
     use tauri_plugin_updater::UpdaterExt;
-    use tauri_plugin_notification::NotificationExt;
+    use tauri_plugin_dialog::{DialogExt, MessageDialogKind, MessageDialogButtons};
 
     let app = handle.clone();
 
@@ -208,64 +208,71 @@ fn setup_auto_update_check(handle: &tauri::AppHandle) {
                 match updater.check().await {
                     Ok(Some(update)) => {
                         let version = update.version.clone();
+                        let current_version = env!("CARGO_PKG_VERSION");
                         println!("✅ Update available: {}", version);
 
-                        // Show native macOS notification
-                        let notification_result = app.notification()
-                            .builder()
-                            .title("Update Available")
-                            .body(&format!("Cushion {} is available. Click to install.", version))
-                            .show();
+                        // Show native macOS dialog (modal alert)
+                        let message = format!(
+                            "A new version of Cushion is available!\n\nCurrent version: {}\nNew version: {}\n\nWould you like to download and install it now?",
+                            current_version,
+                            version
+                        );
 
-                        if let Err(e) = notification_result {
-                            println!("❌ Failed to show update notification: {}", e);
-                        } else {
-                            println!("📬 Update notification shown");
+                        let app_clone = app.clone();
+                        let confirmed = app.dialog()
+                            .message(message)
+                            .title("Software Update")
+                            .kind(MessageDialogKind::Info)
+                            .buttons(MessageDialogButtons::OkCancelCustom("Install Update".into(), "Not Now".into()))
+                            .blocking_show();
 
-                            // Listen for notification click to trigger install
-                            let app_clone = app.clone();
-                            app.listen("notification://clicked", move |event| {
-                                let payload = event.payload();
-                                if payload.contains("Update Available") || payload.contains("Cushion") {
-                                    println!("🔔 Update notification clicked, starting installation...");
+                        if confirmed {
+                            println!("✅ User confirmed update installation");
 
-                                    let app_for_install = app_clone.clone();
-                                    tauri::async_runtime::spawn(async move {
-                                        match app_for_install.updater_builder().build() {
-                                            Ok(updater) => {
-                                                match updater.check().await {
-                                                    Ok(Some(update)) => {
-                                                        println!("⬇️  Installing update: {}", update.version);
+                            // Start installation in background
+                            tauri::async_runtime::spawn(async move {
+                                match app_clone.updater_builder().build() {
+                                    Ok(updater) => {
+                                        match updater.check().await {
+                                            Ok(Some(update)) => {
+                                                println!("⬇️  Installing update: {}", update.version);
 
-                                                        match update.download_and_install(|chunk_length, content_length| {
-                                                            if let Some(total) = content_length {
-                                                                let percentage = (chunk_length as f64 / total as f64) * 100.0;
-                                                                println!("📊 Download progress: {:.1}%", percentage);
-                                                            }
-                                                        }, || {
-                                                            println!("✅ Update downloaded, installing...");
-                                                        }).await {
-                                                            Ok(_) => {
-                                                                println!("🎉 Update installed! Restarting...");
-                                                                // App will restart automatically
-                                                            }
-                                                            Err(e) => {
-                                                                println!("❌ Failed to install update: {}", e);
-                                                            }
-                                                        }
+                                                match update.download_and_install(|chunk_length, content_length| {
+                                                    if let Some(total) = content_length {
+                                                        let percentage = (chunk_length as f64 / total as f64) * 100.0;
+                                                        println!("📊 Download progress: {:.1}%", percentage);
                                                     }
-                                                    _ => {
-                                                        println!("❌ No update found when trying to install");
+                                                }, || {
+                                                    println!("✅ Update downloaded, installing...");
+                                                }).await {
+                                                    Ok(_) => {
+                                                        println!("🎉 Update installed! Restarting...");
+                                                        // App will restart automatically
+                                                    }
+                                                    Err(e) => {
+                                                        println!("❌ Failed to install update: {}", e);
+
+                                                        // Show error dialog
+                                                        let _ = app_clone.dialog()
+                                                            .message(format!("Failed to install update: {}", e))
+                                                            .title("Update Error")
+                                                            .kind(MessageDialogKind::Error)
+                                                            .blocking_show();
                                                     }
                                                 }
                                             }
-                                            Err(e) => {
-                                                println!("❌ Failed to build updater for install: {}", e);
+                                            _ => {
+                                                println!("❌ No update found when trying to install");
                                             }
                                         }
-                                    });
+                                    }
+                                    Err(e) => {
+                                        println!("❌ Failed to build updater for install: {}", e);
+                                    }
                                 }
                             });
+                        } else {
+                            println!("ℹ️  User declined update installation");
                         }
                     }
                     Ok(None) => {
