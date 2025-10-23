@@ -220,7 +220,7 @@ fn setup_auto_update_check(handle: &tauri::AppHandle) {
 
                         // Use spawn_blocking to properly handle the blocking dialog call
                         let app_for_dialog = app.clone();
-                        let confirmed = tokio::task::spawn_blocking(move || {
+                        let confirmed = tauri::async_runtime::spawn_blocking(move || {
                             app_for_dialog.dialog()
                                 .message(message)
                                 .title("Software Update")
@@ -251,7 +251,7 @@ fn setup_auto_update_check(handle: &tauri::AppHandle) {
                                     // Show error dialog using spawn_blocking
                                     let app_for_error = app.clone();
                                     let error_msg = format!("Failed to install update: {}", e);
-                                    let _ = tokio::task::spawn_blocking(move || {
+                                    let _ = tauri::async_runtime::spawn_blocking(move || {
                                         app_for_error.dialog()
                                             .message(error_msg)
                                             .title("Update Error")
