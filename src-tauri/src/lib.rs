@@ -218,17 +218,21 @@ fn setup_auto_update_check(handle: &tauri::AppHandle) {
                             version
                         );
 
-                        let confirmed = app.dialog()
-                            .message(message)
-                            .title("Software Update")
-                            .buttons(MessageDialogButtons::OkCancelCustom("Install Update".into(), "Not Now".into()))
-                            .blocking_show();
+                        // Use spawn_blocking to properly handle the blocking dialog call
+                        let app_for_dialog = app.clone();
+                        let confirmed = tokio::task::spawn_blocking(move || {
+                            app_for_dialog.dialog()
+                                .message(message)
+                                .title("Software Update")
+                                .buttons(MessageDialogButtons::OkCancelCustom("Install Update".into(), "Not Now".into()))
+                                .blocking_show()
+                        }).await.unwrap_or(false);
 
                         if confirmed {
                             println!("✅ User confirmed update installation");
                             println!("⬇️  Installing update: {}", update.version);
 
-                            // Continue installation in same async context
+                            // Continue installation in async context
                             match update.download_and_install(|chunk_length, content_length| {
                                 if let Some(total) = content_length {
                                     let percentage = (chunk_length as f64 / total as f64) * 100.0;
@@ -244,12 +248,16 @@ fn setup_auto_update_check(handle: &tauri::AppHandle) {
                                 Err(e) => {
                                     println!("❌ Failed to install update: {}", e);
 
-                                    // Show error dialog
-                                    let _ = app.dialog()
-                                        .message(format!("Failed to install update: {}", e))
-                                        .title("Update Error")
-                                        .kind(MessageDialogKind::Error)
-                                        .blocking_show();
+                                    // Show error dialog using spawn_blocking
+                                    let app_for_error = app.clone();
+                                    let error_msg = format!("Failed to install update: {}", e);
+                                    let _ = tokio::task::spawn_blocking(move || {
+                                        app_for_error.dialog()
+                                            .message(error_msg)
+                                            .title("Update Error")
+                                            .kind(MessageDialogKind::Error)
+                                            .blocking_show()
+                                    }).await;
                                 }
                             }
                         } else {
