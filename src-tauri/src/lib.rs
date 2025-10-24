@@ -243,7 +243,8 @@ fn setup_auto_update_check(handle: &tauri::AppHandle) {
                             }).await {
                                 Ok(_) => {
                                     println!("🎉 Update installed! Restarting...");
-                                    // App will restart automatically
+                                    // Explicitly restart the app
+                                    app.restart();
                                 }
                                 Err(e) => {
                                     println!("❌ Failed to install update: {}", e);
