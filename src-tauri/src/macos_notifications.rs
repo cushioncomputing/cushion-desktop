@@ -5,10 +5,28 @@ use cocoa::foundation::NSString;
 use objc::declare::ClassDecl;
 use objc::runtime::{Class, Object, Sel};
 use objc::{class, msg_send, sel, sel_impl};
+use std::ffi::CStr;
 use std::sync::Once;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 type CompletionBlock = *mut block::Block<(), ()>;
+
+/// Convert an NSString to a Rust String
+unsafe fn nsstring_to_string(ns_string: id) -> Option<String> {
+    if ns_string == nil {
+        return None;
+    }
+
+    let c_str: *const i8 = msg_send![ns_string, UTF8String];
+    if c_str.is_null() {
+        return None;
+    }
+
+    CStr::from_ptr(c_str)
+        .to_str()
+        .ok()
+        .map(|s| s.to_string())
+}
 
 static INIT_DELEGATE: Once = Once::new();
 
@@ -47,7 +65,7 @@ unsafe fn create_delegate(app_handle: AppHandle) -> id {
             this: &Object,
             _cmd: Sel,
             _center: id,
-            _response: id,
+            response: id,
             completion_handler: id,
         ) {
             unsafe {
@@ -57,6 +75,24 @@ unsafe fn create_delegate(app_handle: AppHandle) -> id {
                 let app_handle_ptr: *mut std::ffi::c_void = *this.get_ivar("_app_handle");
                 if !app_handle_ptr.is_null() {
                     let app_handle = &*(app_handle_ptr as *const AppHandle);
+
+                    // Extract notification title to check for associated deep links
+                    // response.notification.request.content.title
+                    let notification: id = msg_send![response, notification];
+                    let request: id = msg_send![notification, request];
+                    let content: id = msg_send![request, content];
+                    let title_nsstring: id = msg_send![content, title];
+
+                    if let Some(title) = nsstring_to_string(title_nsstring) {
+                        println!("📋 Notification title: '{}'", title);
+
+                        // Check if there's a deep link associated with this notification
+                        if let Some(url) = crate::commands::notification::get_notification_url(&title) {
+                            println!("🔗 Found deep link URL: {}", url);
+                            // Emit the deep-link event to the frontend
+                            let _ = app_handle.emit("deep-link", url);
+                        }
+                    }
 
                     // Activate the app and bring it to the foreground
                     activate_app();
