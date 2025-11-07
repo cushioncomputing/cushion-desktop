@@ -9,6 +9,16 @@ lazy_static::lazy_static! {
     static ref NOTIFICATION_URLS: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
 }
 
+/// Get the URL associated with a notification title (if any)
+/// This is used by the native macOS notification handler
+pub fn get_notification_url(title: &str) -> Option<String> {
+    if let Ok(urls) = NOTIFICATION_URLS.lock() {
+        urls.get(title).cloned()
+    } else {
+        None
+    }
+}
+
 #[tauri::command]
 pub async fn show_notification(
     app: tauri::AppHandle,
@@ -26,10 +36,12 @@ pub async fn show_notification(
         }
     }
 
-    // Create and send the notification
-    let notification_builder = app.notification().builder()
+    // Create and send the notification with sound
+    let notification_builder = app.notification()
+        .builder()
         .title(title.clone())
-        .body(body.clone());
+        .body(body.clone())
+        .sound("default");
 
     match notification_builder.show() {
         Ok(_) => {

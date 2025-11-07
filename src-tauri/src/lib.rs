@@ -4,6 +4,9 @@
 mod commands;
 mod theme;
 
+#[cfg(target_os = "macos")]
+mod macos_notifications;
+
 // Imports
 use tauri::{Emitter, Listener, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
@@ -75,6 +78,10 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     // Setup notification click handling
     commands::notification::setup_notification_click_handler(app.handle());
+
+    // Setup native macOS notification delegate for click handling
+    #[cfg(target_os = "macos")]
+    macos_notifications::setup_notification_delegate(app.handle());
 
     // Check for updates on startup
     setup_auto_update_check(app.handle());
