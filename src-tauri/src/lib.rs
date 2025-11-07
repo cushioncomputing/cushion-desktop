@@ -3,6 +3,7 @@
 // Module declarations
 mod commands;
 mod theme;
+mod notifications;
 
 // Imports
 use tauri::{Emitter, Listener, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
@@ -18,7 +19,6 @@ use cocoa::base::id;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
@@ -73,8 +73,8 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // Setup deep link handling
     setup_deep_links(app.handle());
 
-    // Setup notification click handling
-    commands::notification::setup_notification_click_handler(app.handle());
+    // Setup notification system
+    notifications::setup(app.handle());
 
     // Check for updates on startup
     setup_auto_update_check(app.handle());

@@ -4,11 +4,11 @@ version = 4
 
 [[package]]
 name = "Cushion"
-version = "0.3.1"
+version = "0.3.9"
 dependencies = [
  "block",
  "cocoa",
- "lazy_static",
+ "notify-rust",
  "objc",
  "raw-window-handle",
  "serde",
@@ -18,11 +18,12 @@ dependencies = [
  "tauri-plugin-deep-link",
  "tauri-plugin-dialog",
  "tauri-plugin-global-shortcut",
- "tauri-plugin-notification",
  "tauri-plugin-opener",
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
+ "tauri-winrt-notification",
  "urlencoding",
+ "uuid",
 ]
 
 [[package]]
@@ -4322,25 +4323,6 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.12",
-]
-
-[[package]]
-name = "tauri-plugin-notification"
-version = "2.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2fbc86b929b5376ab84b25c060f966d146b2fbd59b6af8264027b343c82c219"
-dependencies = [
- "log",
- "notify-rust",
- "rand 0.9.2",
- "serde",
- "serde_json",
- "serde_repr",
- "tauri",
- "tauri-plugin",
- "thiserror 2.0.12",
- "time",
- "url",
 ]
 
 [[package]]
