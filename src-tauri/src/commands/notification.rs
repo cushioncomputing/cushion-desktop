@@ -36,10 +36,12 @@ pub async fn show_notification(
         }
     }
 
-    // Create and send the notification
-    let notification_builder = app.notification().builder()
+    // Create and send the notification with sound
+    let notification_builder = app.notification()
+        .builder()
         .title(title.clone())
-        .body(body.clone());
+        .body(body.clone())
+        .sound("default");
 
     match notification_builder.show() {
         Ok(_) => {
