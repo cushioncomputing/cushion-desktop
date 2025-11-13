@@ -16,6 +16,8 @@ use objc::{class, msg_send, sel, sel_impl};
 
 #[cfg(target_os = "macos")]
 const NS_ACTIVITY_USER_INITIATED: u64 = 0x00FFFFFF;
+#[cfg(target_os = "macos")]
+const NS_ACTIVITY_LATENCY_CRITICAL: u64 = 0xFF00000000;
 
 /// Prevents the app from being put to sleep by macOS App Nap.
 ///
@@ -42,8 +44,9 @@ pub fn prevent_app_nap() -> Option<id> {
             "Maintaining WebSocket connection for real-time notifications"
         );
 
-        // Activity options: User-initiated work (prevents App Nap, allows Mac to sleep)
-        let options = NS_ACTIVITY_USER_INITIATED;
+        // Activity options: User-initiated + latency-critical (prevents App Nap, allows Mac to sleep)
+        // NSActivityLatencyCritical is needed to fully prevent App Nap in Activity Monitor
+        let options = NS_ACTIVITY_USER_INITIATED | NS_ACTIVITY_LATENCY_CRITICAL;
 
         // Begin activity
         let activity: id = msg_send![
@@ -58,7 +61,8 @@ pub fn prevent_app_nap() -> Option<id> {
         }
 
         println!("[AppNap] ✓ Activity assertion started successfully");
-        println!("[AppNap]   Options: NSActivityUserInitiated (prevents App Nap, allows Mac sleep)");
+        println!("[AppNap]   Options: NSActivityUserInitiated | NSActivityLatencyCritical");
+        println!("[AppNap]   This prevents App Nap but allows Mac to sleep normally");
         println!("[AppNap]   Reason: Maintaining WebSocket connection for real-time notifications");
 
         // Return the activity object - must be stored to keep assertion active!
