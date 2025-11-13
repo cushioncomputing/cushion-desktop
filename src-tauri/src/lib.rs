@@ -4,6 +4,7 @@
 mod commands;
 mod theme;
 mod notifications;
+mod app_nap;
 
 // Imports
 use tauri::{Emitter, Listener, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
@@ -13,6 +14,18 @@ use tauri::TitleBarStyle;
 
 #[cfg(target_os = "macos")]
 use cocoa::base::id;
+
+/// Wrapper struct to store the macOS activity assertion
+/// This keeps the App Nap prevention active for the app lifetime
+#[cfg(target_os = "macos")]
+struct AppNapActivity(id);
+
+// Safety: The activity object is created once and never modified.
+// NSProcessInfo is thread-safe, and we only keep the object alive without accessing it.
+#[cfg(target_os = "macos")]
+unsafe impl Send for AppNapActivity {}
+#[cfg(target_os = "macos")]
+unsafe impl Sync for AppNapActivity {}
 
 /// Main Tauri application entry point
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -75,6 +88,16 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     // Setup notification system
     notifications::setup(app.handle());
+
+    // Prevent macOS App Nap to keep WebSocket connections alive
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(activity) = app_nap::prevent_app_nap() {
+            // Store the activity in app state to keep the assertion active
+            // If we don't store it, it will be dropped and the assertion will end
+            app.manage(AppNapActivity(activity));
+        }
+    }
 
     // Check for updates on startup
     setup_auto_update_check(app.handle());
