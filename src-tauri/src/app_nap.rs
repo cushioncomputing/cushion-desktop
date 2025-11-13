@@ -4,8 +4,8 @@
 /// backgrounded or hidden. This is critical for maintaining WebSocket connections
 /// and keeping JavaScript timers (like keepalive intervals) running reliably.
 ///
-/// Uses NSProcessInfo.beginActivityWithOptions with NSActivityUserInitiated flag.
-/// This prevents App Nap but DOES NOT prevent the Mac from sleeping normally.
+/// Uses NSProcessInfo.beginActivityWithOptions with the correct flag to prevent
+/// App Nap while allowing the Mac to sleep normally (same approach as Slack).
 
 #[cfg(target_os = "macos")]
 use cocoa::base::{id, nil};
@@ -14,14 +14,15 @@ use cocoa::foundation::NSString;
 #[cfg(target_os = "macos")]
 use objc::{class, msg_send, sel, sel_impl};
 
+// NSActivityUserInitiatedAllowingIdleSystemSleep = 0x00EFFFFF
+// This prevents App Nap but allows the Mac to sleep when idle
 #[cfg(target_os = "macos")]
-const NS_ACTIVITY_BACKGROUND: u64 = 0x000000FF;
-#[cfg(target_os = "macos")]
-const NS_ACTIVITY_LATENCY_CRITICAL: u64 = 0xFF00000000;
-#[cfg(target_os = "macos")]
-const NS_ACTIVITY_IDLE_DISPLAY_SLEEP_DISABLED: u64 = 1 << 40;
+const NS_ACTIVITY_USER_INITIATED_ALLOWING_IDLE_SYSTEM_SLEEP: u64 = 0x00EFFFFF;
 
 /// Prevents the app from being put to sleep by macOS App Nap.
+///
+/// Uses NSProcessInfo.beginActivityWithOptions with NSActivityUserInitiatedAllowingIdleSystemSleep
+/// flag, which is specifically designed to prevent App Nap while allowing system sleep.
 ///
 /// Returns an activity object that must be kept alive for the duration of the app.
 /// If dropped, the activity assertion is released and App Nap may resume.
@@ -46,11 +47,11 @@ pub fn prevent_app_nap() -> Option<id> {
             "Maintaining WebSocket connection for real-time notifications"
         );
 
-        // Activity options for persistent background activity:
-        // - NSActivityBackground: Long-running background work (no timeout)
-        // - NSActivityLatencyCritical: Prevent App Nap throttling
-        // - NSActivityIdleDisplaySleepDisabled: Keep activity even when display sleeps
-        let options = NS_ACTIVITY_BACKGROUND | NS_ACTIVITY_LATENCY_CRITICAL | NS_ACTIVITY_IDLE_DISPLAY_SLEEP_DISABLED;
+        // NSActivityUserInitiatedAllowingIdleSystemSleep:
+        // - Prevents App Nap throttling
+        // - Allows Mac to sleep when idle
+        // - This is the correct flag for apps like Slack
+        let options = NS_ACTIVITY_USER_INITIATED_ALLOWING_IDLE_SYSTEM_SLEEP;
 
         // Begin activity
         let activity: id = msg_send![
@@ -65,8 +66,8 @@ pub fn prevent_app_nap() -> Option<id> {
         }
 
         println!("[AppNap] ✓ Activity assertion started successfully");
-        println!("[AppNap]   Options: Background | LatencyCritical | IdleDisplaySleepDisabled");
-        println!("[AppNap]   This is a persistent assertion with no timeout");
+        println!("[AppNap]   Flag: NSActivityUserInitiatedAllowingIdleSystemSleep");
+        println!("[AppNap]   This prevents App Nap but allows Mac to sleep normally");
         println!("[AppNap]   Reason: Maintaining WebSocket connection for real-time notifications");
 
         // Return the activity object - must be stored to keep assertion active!
@@ -79,27 +80,6 @@ pub fn prevent_app_nap() -> Option<id> {
 pub fn prevent_app_nap() -> Option<()> {
     println!("[AppNap] Not on macOS - App Nap prevention not needed");
     None
-}
-
-/// Ends the activity assertion (allows App Nap to resume).
-///
-/// Note: This is called automatically when the activity object is dropped,
-/// so explicit calls are usually not needed.
-#[cfg(target_os = "macos")]
-pub fn end_activity(activity: id) {
-    if activity == nil {
-        return;
-    }
-
-    unsafe {
-        let process_info_class = class!(NSProcessInfo);
-        let process_info: id = msg_send![process_info_class, processInfo];
-
-        if process_info != nil {
-            let _: () = msg_send![process_info, endActivity: activity];
-            println!("[AppNap] Activity assertion ended");
-        }
-    }
 }
 
 #[cfg(test)]
