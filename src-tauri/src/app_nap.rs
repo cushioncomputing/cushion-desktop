@@ -14,15 +14,25 @@ use cocoa::foundation::NSString;
 #[cfg(target_os = "macos")]
 use objc::{class, msg_send, sel, sel_impl};
 
-// NSActivityBackground = 0x000000FF
-// This prevents App Nap without preventing any type of sleep
+// NSActivityOptions flag values from NSProcessInfo.h:
+// NSActivityUserInitiatedAllowingIdleSystemSleep = 0x00EFFFFF
+// = (NSActivityUserInitiated & ~NSActivityIdleSystemSleepDisabled)
+//
+// This flag is EXPLICITLY DESIGNED by Apple to:
+// - Prevent App Nap and keep app responsive
+// - Allow idle system sleep (does NOT include NSActivityIdleSystemSleepDisabled bit 20)
+// - Allow idle display sleep (does NOT include NSActivityIdleDisplaySleepDisabled bit 40)
+//
+// Apple docs: "NSActivityUserInitiatedAllowingIdleSystemSleep allows the Mac to go to
+// sleep according to the user's Energy Saver System Preferences"
 #[cfg(target_os = "macos")]
-const NS_ACTIVITY_BACKGROUND: u64 = 0x000000FF;
+const NS_ACTIVITY_USER_INITIATED_ALLOWING_IDLE_SYSTEM_SLEEP: u64 = 0x00EFFFFF;
 
 /// Prevents the app from being put to sleep by macOS App Nap.
 ///
-/// Uses NSProcessInfo.beginActivityWithOptions with NSActivityBackground
-/// flag, which prevents App Nap throttling without preventing any type of sleep.
+/// Uses NSProcessInfo.beginActivityWithOptions with NSActivityUserInitiatedAllowingIdleSystemSleep,
+/// which is Apple's recommended flag for preventing App Nap while allowing the Mac to sleep
+/// normally according to Energy Saver settings.
 ///
 /// Returns an activity object that must be kept alive for the duration of the app.
 /// If dropped, the activity assertion is released and App Nap may resume.
@@ -47,11 +57,13 @@ pub fn prevent_app_nap() -> Option<id> {
             "Maintaining WebSocket connection for real-time notifications"
         );
 
-        // NSActivityBackground:
-        // - Prevents App Nap throttling
-        // - Does NOT prevent display sleep or system sleep
-        // - Designed for background/maintenance work
-        let options = NS_ACTIVITY_BACKGROUND;
+        // NSActivityUserInitiatedAllowingIdleSystemSleep (0x00EFFFFF):
+        // Apple's official flag for preventing App Nap while allowing system sleep.
+        // From NSProcessInfo.h: (NSActivityUserInitiated & ~NSActivityIdleSystemSleepDisabled)
+        // - Prevents App Nap throttling (keeps JavaScript timers and WebSocket alive)
+        // - Does NOT include bit 20 (NSActivityIdleSystemSleepDisabled) - allows system sleep
+        // - Does NOT include bit 40 (NSActivityIdleDisplaySleepDisabled) - allows display sleep
+        let options = NS_ACTIVITY_USER_INITIATED_ALLOWING_IDLE_SYSTEM_SLEEP;
 
         // Begin activity
         let activity: id = msg_send![
@@ -66,8 +78,8 @@ pub fn prevent_app_nap() -> Option<id> {
         }
 
         println!("[AppNap] ✓ Activity assertion started successfully");
-        println!("[AppNap]   Flag: NSActivityBackground (0x000000FF)");
-        println!("[AppNap]   This prevents App Nap without preventing display/system sleep");
+        println!("[AppNap]   Flag: NSActivityUserInitiatedAllowingIdleSystemSleep (0x00EFFFFF)");
+        println!("[AppNap]   This prevents App Nap while allowing display sleep and system sleep");
         println!("[AppNap]   Reason: Maintaining WebSocket connection for real-time notifications");
 
         // Return the activity object - must be stored to keep assertion active!
