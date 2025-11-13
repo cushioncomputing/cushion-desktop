@@ -15,9 +15,11 @@ use cocoa::foundation::NSString;
 use objc::{class, msg_send, sel, sel_impl};
 
 #[cfg(target_os = "macos")]
-const NS_ACTIVITY_USER_INITIATED: u64 = 0x00FFFFFF;
+const NS_ACTIVITY_BACKGROUND: u64 = 0x000000FF;
 #[cfg(target_os = "macos")]
 const NS_ACTIVITY_LATENCY_CRITICAL: u64 = 0xFF00000000;
+#[cfg(target_os = "macos")]
+const NS_ACTIVITY_IDLE_DISPLAY_SLEEP_DISABLED: u64 = 1 << 40;
 
 /// Prevents the app from being put to sleep by macOS App Nap.
 ///
@@ -44,9 +46,11 @@ pub fn prevent_app_nap() -> Option<id> {
             "Maintaining WebSocket connection for real-time notifications"
         );
 
-        // Activity options: User-initiated + latency-critical (prevents App Nap, allows Mac to sleep)
-        // NSActivityLatencyCritical is needed to fully prevent App Nap in Activity Monitor
-        let options = NS_ACTIVITY_USER_INITIATED | NS_ACTIVITY_LATENCY_CRITICAL;
+        // Activity options for persistent background activity:
+        // - NSActivityBackground: Long-running background work (no timeout)
+        // - NSActivityLatencyCritical: Prevent App Nap throttling
+        // - NSActivityIdleDisplaySleepDisabled: Keep activity even when display sleeps
+        let options = NS_ACTIVITY_BACKGROUND | NS_ACTIVITY_LATENCY_CRITICAL | NS_ACTIVITY_IDLE_DISPLAY_SLEEP_DISABLED;
 
         // Begin activity
         let activity: id = msg_send![
@@ -61,8 +65,8 @@ pub fn prevent_app_nap() -> Option<id> {
         }
 
         println!("[AppNap] ✓ Activity assertion started successfully");
-        println!("[AppNap]   Options: NSActivityUserInitiated | NSActivityLatencyCritical");
-        println!("[AppNap]   This prevents App Nap but allows Mac to sleep normally");
+        println!("[AppNap]   Options: Background | LatencyCritical | IdleDisplaySleepDisabled");
+        println!("[AppNap]   This is a persistent assertion with no timeout");
         println!("[AppNap]   Reason: Maintaining WebSocket connection for real-time notifications");
 
         // Return the activity object - must be stored to keep assertion active!
