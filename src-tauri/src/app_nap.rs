@@ -14,15 +14,15 @@ use cocoa::foundation::NSString;
 #[cfg(target_os = "macos")]
 use objc::{class, msg_send, sel, sel_impl};
 
-// NSActivityUserInitiatedAllowingIdleSystemSleep = 0x00EFFFFF
-// This prevents App Nap but allows the Mac to sleep when idle
+// NSActivityBackground = 0x000000FF
+// This prevents App Nap without preventing any type of sleep
 #[cfg(target_os = "macos")]
-const NS_ACTIVITY_USER_INITIATED_ALLOWING_IDLE_SYSTEM_SLEEP: u64 = 0x00EFFFFF;
+const NS_ACTIVITY_BACKGROUND: u64 = 0x000000FF;
 
 /// Prevents the app from being put to sleep by macOS App Nap.
 ///
-/// Uses NSProcessInfo.beginActivityWithOptions with NSActivityUserInitiatedAllowingIdleSystemSleep
-/// flag, which is specifically designed to prevent App Nap while allowing system sleep.
+/// Uses NSProcessInfo.beginActivityWithOptions with NSActivityBackground
+/// flag, which prevents App Nap throttling without preventing any type of sleep.
 ///
 /// Returns an activity object that must be kept alive for the duration of the app.
 /// If dropped, the activity assertion is released and App Nap may resume.
@@ -47,11 +47,11 @@ pub fn prevent_app_nap() -> Option<id> {
             "Maintaining WebSocket connection for real-time notifications"
         );
 
-        // NSActivityUserInitiatedAllowingIdleSystemSleep:
+        // NSActivityBackground:
         // - Prevents App Nap throttling
-        // - Allows Mac to sleep when idle
-        // - This is the correct flag for apps like Slack
-        let options = NS_ACTIVITY_USER_INITIATED_ALLOWING_IDLE_SYSTEM_SLEEP;
+        // - Does NOT prevent display sleep or system sleep
+        // - Designed for background/maintenance work
+        let options = NS_ACTIVITY_BACKGROUND;
 
         // Begin activity
         let activity: id = msg_send![
@@ -66,8 +66,8 @@ pub fn prevent_app_nap() -> Option<id> {
         }
 
         println!("[AppNap] ✓ Activity assertion started successfully");
-        println!("[AppNap]   Flag: NSActivityUserInitiatedAllowingIdleSystemSleep");
-        println!("[AppNap]   This prevents App Nap but allows Mac to sleep normally");
+        println!("[AppNap]   Flag: NSActivityBackground (0x000000FF)");
+        println!("[AppNap]   This prevents App Nap without preventing display/system sleep");
         println!("[AppNap]   Reason: Maintaining WebSocket connection for real-time notifications");
 
         // Return the activity object - must be stored to keep assertion active!

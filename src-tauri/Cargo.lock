@@ -8,7 +8,6 @@ version = "0.4.0"
 dependencies = [
  "block",
  "cocoa",
- "core-foundation 0.9.4",
  "notify-rust",
  "objc",
  "raw-window-handle",
