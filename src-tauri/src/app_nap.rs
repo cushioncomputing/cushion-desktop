@@ -15,24 +15,24 @@ use cocoa::foundation::NSString;
 use objc::{class, msg_send, sel, sel_impl};
 
 // NSActivityOptions flag values from NSProcessInfo.h:
-// NSActivityUserInitiatedAllowingIdleSystemSleep = 0x00EFFFFF
-// = (NSActivityUserInitiated & ~NSActivityIdleSystemSleepDisabled)
+// NSActivityUserInitiated = 0x00FFFFFF | NSActivityIdleSystemSleepDisabled
 //
-// This flag is EXPLICITLY DESIGNED by Apple to:
-// - Prevent App Nap and keep app responsive
-// - Allow idle system sleep (does NOT include NSActivityIdleSystemSleepDisabled bit 20)
-// - Allow idle display sleep (does NOT include NSActivityIdleDisplaySleepDisabled bit 40)
+// This flag prevents App Nap while allowing manual sleep:
+// - Prevents App Nap from throttling CPU/timers (keeps WebSocket alive)
+// - Prevents automatic/idle system sleep (Mac won't auto-sleep while app runs background work)
+// - Still allows manual sleep (user can close lid or click Sleep button)
+// - Allows idle display sleep
 //
-// Apple docs: "NSActivityUserInitiatedAllowingIdleSystemSleep allows the Mac to go to
-// sleep according to the user's Energy Saver System Preferences"
+// This is stronger than NSActivityUserInitiatedAllowingIdleSystemSleep (0x00EFFFFF)
+// which was not sufficient to prevent App Nap from throttling WebSocket connections.
 #[cfg(target_os = "macos")]
-const NS_ACTIVITY_USER_INITIATED_ALLOWING_IDLE_SYSTEM_SLEEP: u64 = 0x00EFFFFF;
+const NS_ACTIVITY_USER_INITIATED: u64 = 0x00FFFFFF;
 
 /// Prevents the app from being put to sleep by macOS App Nap.
 ///
-/// Uses NSProcessInfo.beginActivityWithOptions with NSActivityUserInitiatedAllowingIdleSystemSleep,
-/// which is Apple's recommended flag for preventing App Nap while allowing the Mac to sleep
-/// normally according to Energy Saver settings.
+/// Uses NSProcessInfo.beginActivityWithOptions with NSActivityUserInitiated,
+/// which prevents App Nap for user-initiated work like maintaining WebSocket
+/// connections for real-time notifications.
 ///
 /// Returns an activity object that must be kept alive for the duration of the app.
 /// If dropped, the activity assertion is released and App Nap may resume.
@@ -57,13 +57,13 @@ pub fn prevent_app_nap() -> Option<id> {
             "Maintaining WebSocket connection for real-time notifications"
         );
 
-        // NSActivityUserInitiatedAllowingIdleSystemSleep (0x00EFFFFF):
-        // Apple's official flag for preventing App Nap while allowing system sleep.
-        // From NSProcessInfo.h: (NSActivityUserInitiated & ~NSActivityIdleSystemSleepDisabled)
+        // NSActivityUserInitiated (0x00FFFFFF):
+        // Apple's flag for user-initiated work.
         // - Prevents App Nap throttling (keeps JavaScript timers and WebSocket alive)
-        // - Does NOT include bit 20 (NSActivityIdleSystemSleepDisabled) - allows system sleep
-        // - Does NOT include bit 40 (NSActivityIdleDisplaySleepDisabled) - allows display sleep
-        let options = NS_ACTIVITY_USER_INITIATED_ALLOWING_IDLE_SYSTEM_SLEEP;
+        // - User explicitly logged in expecting real-time notifications
+        // - Includes NSActivityIdleSystemSleepDisabled bit
+        // - May prevent automatic system sleep (will test)
+        let options = NS_ACTIVITY_USER_INITIATED;
 
         // Begin activity
         let activity: id = msg_send![
@@ -78,8 +78,9 @@ pub fn prevent_app_nap() -> Option<id> {
         }
 
         println!("[AppNap] ✓ Activity assertion started successfully");
-        println!("[AppNap]   Flag: NSActivityUserInitiatedAllowingIdleSystemSleep (0x00EFFFFF)");
-        println!("[AppNap]   This prevents App Nap while allowing display sleep and system sleep");
+        println!("[AppNap]   Flag: NSActivityUserInitiated (0x00FFFFFF)");
+        println!("[AppNap]   This prevents App Nap for user-initiated work");
+        println!("[AppNap]   Includes NSActivityIdleSystemSleepDisabled bit");
         println!("[AppNap]   Reason: Maintaining WebSocket connection for real-time notifications");
 
         // Return the activity object - must be stored to keep assertion active!
