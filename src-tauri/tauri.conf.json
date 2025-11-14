@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Cushion Developer",
-  "version": "0.4.2",
-  "identifier": "com.cushion.desktop.dev",
+  "productName": "Cushion",
+  "version": "0.4.3",
+  "identifier": "com.cushion.desktop",
   "build": {
-    "devUrl": "http://localhost:3000",
-    "frontendDist": "http://localhost:3000",
+    "devUrl": "https://app.cushion.so",
+    "frontendDist": "https://app.cushion.so",
     "beforeBuildCommand": ""
   },
   "app": {
@@ -48,8 +48,8 @@
     "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
-      "icons/dev-icon.icns",
-      "icons/dev-icon.ico"
+      "icons/icon.icns",
+      "icons/icon.ico"
     ],
     "publisher": "Cushion",
     "copyright": "Copyright © 2025 Cushion. All rights reserved.",
@@ -65,14 +65,14 @@
     "deep-link": {
       "desktop": {
         "schemes": [
-          "cushion-dev"
+          "cushion"
         ]
       }
     },
     "updater": {
       "active": true,
       "endpoints": [
-        "https://github.com/cushioncomputing/cushion-desktop/releases/latest/download/latest-dev.json"
+        "https://github.com/cushioncomputing/cushion-desktop/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI4ODM3MDI3QTY3QTM2QUUKUldTdU5ucW1KM0NES0NiaDlUSzZQSHMzeDdyNzdXQzQrUGJMajk5NVRCeVV1elZCWXVyS3NBcjAK",
       "windows": {
