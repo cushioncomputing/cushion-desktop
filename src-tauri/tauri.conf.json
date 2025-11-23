@@ -4,8 +4,8 @@
   "version": "0.4.3",
   "identifier": "com.cushion.desktop",
   "build": {
-    "devUrl": "https://app.cushion.so",
-    "frontendDist": "https://app.cushion.so",
+    "devUrl": "http://localhost:3000",
+    "frontendDist": "http://localhost:3000",
     "beforeBuildCommand": ""
   },
   "app": {
