@@ -150,7 +150,26 @@ fn get_initialization_script() -> &'static str {
             document.documentElement.style.overscrollBehaviorX = 'none';
             document.documentElement.style.overscrollBehaviorY = 'none';
             document.documentElement.style.overflowX = 'hidden';
+
+            // Disable spell check on all editable elements
+            document.body.setAttribute('spellcheck', 'false');
         });
+
+        // Also disable spell check on dynamically added elements
+        new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) {
+                        if (node.isContentEditable || node.tagName === 'INPUT' || node.tagName === 'TEXTAREA') {
+                            node.setAttribute('spellcheck', 'false');
+                        }
+                        node.querySelectorAll && node.querySelectorAll('input, textarea, [contenteditable]').forEach(function(el) {
+                            el.setAttribute('spellcheck', 'false');
+                        });
+                    }
+                });
+            });
+        }).observe(document.body, { childList: true, subtree: true });
 
         // Enable zoom controls with webview zoom
         let zoomLevel = 1.0;
@@ -249,6 +268,7 @@ fn setup_auto_update_check(handle: &tauri::AppHandle) {
                             app_for_dialog.dialog()
                                 .message(message)
                                 .title("Software Update")
+                                .kind(MessageDialogKind::Info)
                                 .buttons(MessageDialogButtons::OkCancelCustom("Install Update".into(), "Not Now".into()))
                                 .blocking_show()
                         }).await.unwrap_or(false);
