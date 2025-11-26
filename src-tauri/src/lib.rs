@@ -151,25 +151,32 @@ fn get_initialization_script() -> &'static str {
             document.documentElement.style.overscrollBehaviorY = 'none';
             document.documentElement.style.overflowX = 'hidden';
 
-            // Disable spell check on all editable elements
-            document.body.setAttribute('spellcheck', 'false');
-        });
+            // Disable spellcheck and text prediction on all inputs
+            const disableInputPrediction = (el) => {
+                el.setAttribute('spellcheck', 'false');
+                el.setAttribute('autocomplete', 'off');
+                el.setAttribute('autocorrect', 'off');
+                el.setAttribute('autocapitalize', 'off');
+            };
 
-        // Also disable spell check on dynamically added elements
-        new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                mutation.addedNodes.forEach(function(node) {
-                    if (node.nodeType === 1) {
-                        if (node.isContentEditable || node.tagName === 'INPUT' || node.tagName === 'TEXTAREA') {
-                            node.setAttribute('spellcheck', 'false');
+            // Apply to existing inputs
+            document.querySelectorAll('input, textarea, [contenteditable="true"]').forEach(disableInputPrediction);
+
+            // Apply to dynamically added inputs via MutationObserver
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === 1) {
+                            if (node.matches && node.matches('input, textarea, [contenteditable="true"]')) {
+                                disableInputPrediction(node);
+                            }
+                            node.querySelectorAll && node.querySelectorAll('input, textarea, [contenteditable="true"]').forEach(disableInputPrediction);
                         }
-                        node.querySelectorAll && node.querySelectorAll('input, textarea, [contenteditable]').forEach(function(el) {
-                            el.setAttribute('spellcheck', 'false');
-                        });
-                    }
+                    });
                 });
             });
-        }).observe(document.body, { childList: true, subtree: true });
+            observer.observe(document.body, { childList: true, subtree: true });
+        });
 
         // Enable zoom controls with webview zoom
         let zoomLevel = 1.0;
