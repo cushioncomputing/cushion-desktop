@@ -273,6 +273,9 @@ jobs:
           mv dev/src-tauri/target/aarch64-apple-darwin/debug/bundle/dmg/*.dmg ./Cushion_Developer_${{ steps.version.outputs.version }}_aarch64.dmg
           mv dev/latest-dev.json ./latest-dev.json
 
+          # Create fixed-name copies for direct download links (used by marketing site)
+          cp ./Cushion_${{ steps.version.outputs.version }}_aarch64.dmg ./Cushion_latest_aarch64.dmg
+
       - name: Generate release notes
         id: notes
         run: |
@@ -324,6 +327,7 @@ jobs:
             Cushion.app.tar.gz
             Cushion.app.tar.gz.sig
             Cushion_${{ steps.version.outputs.version }}_aarch64.dmg
+            Cushion_latest_aarch64.dmg
             Cushion-Developer.app.tar.gz
             Cushion-Developer.app.tar.gz.sig
             Cushion_Developer_${{ steps.version.outputs.version }}_aarch64.dmg
