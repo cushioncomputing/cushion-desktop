@@ -58,7 +58,22 @@
     "longDescription": "Cushion is an async-first team collaboration platform that helps remote teams stay connected without the chaos of constant notifications.",
     "macOS": {
       "signingIdentity": "Developer ID Application: David Hawkins (UC763J2859)",
-      "minimumSystemVersion": "10.13"
+      "minimumSystemVersion": "10.13",
+      "dmg": {
+        "background": "icons/dmg-background.png",
+        "appPosition": {
+          "x": 180,
+          "y": 210
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 210
+        },
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        }
+      }
     }
   },
   "plugins": {
