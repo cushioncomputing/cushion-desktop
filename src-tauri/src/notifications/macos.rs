@@ -7,9 +7,9 @@ use super::{ClickAction, NotificationClick, NotificationManager};
 use std::sync::Arc;
 
 #[cfg(target_os = "macos")]
-use cocoa::base::{id, nil};
+use cocoa::base::{id, nil, BOOL, YES};
 #[cfg(target_os = "macos")]
-use cocoa::foundation::{NSString, NSAutoreleasePool};
+use cocoa::foundation::{NSString, NSAutoreleasePool, NSInteger, NSUInteger};
 #[cfg(target_os = "macos")]
 use objc::declare::ClassDecl;
 #[cfg(target_os = "macos")]
@@ -18,6 +18,24 @@ use objc::runtime::{Class, Object, Sel};
 use objc::{class, msg_send, sel, sel_impl};
 #[cfg(target_os = "macos")]
 use block::ConcreteBlock;
+#[cfg(target_os = "macos")]
+use std::sync::mpsc;
+
+// UNAuthorizationOptions
+#[cfg(target_os = "macos")]
+const UN_AUTHORIZATION_OPTION_BADGE: NSUInteger = 1 << 0;
+#[cfg(target_os = "macos")]
+const UN_AUTHORIZATION_OPTION_SOUND: NSUInteger = 1 << 1;
+#[cfg(target_os = "macos")]
+const UN_AUTHORIZATION_OPTION_ALERT: NSUInteger = 1 << 2;
+
+// UNAuthorizationStatus
+#[cfg(target_os = "macos")]
+const UN_AUTHORIZATION_STATUS_NOT_DETERMINED: NSInteger = 0;
+#[cfg(target_os = "macos")]
+const UN_AUTHORIZATION_STATUS_DENIED: NSInteger = 1;
+#[cfg(target_os = "macos")]
+const UN_AUTHORIZATION_STATUS_AUTHORIZED: NSInteger = 2;
 
 #[cfg(target_os = "macos")]
 static mut NOTIFICATION_MANAGER: Option<Arc<NotificationManager>> = None;
@@ -38,6 +56,65 @@ pub fn setup(manager: Arc<NotificationManager>) {
 
         println!("🍎 macOS notification system initialized with delegate");
     }
+}
+
+/// Request notification permission from macOS
+/// This will show the system permission dialog if permission hasn't been determined yet.
+/// Returns "granted" or "denied".
+#[cfg(target_os = "macos")]
+pub fn request_notification_permission() -> Result<String, String> {
+    unsafe {
+        let _pool = NSAutoreleasePool::new(nil);
+
+        // Get UNUserNotificationCenter
+        let center_class = class!(UNUserNotificationCenter);
+        let center: id = msg_send![center_class, currentNotificationCenter];
+
+        // Create channel to receive result from completion handler
+        let (tx, rx) = mpsc::channel::<(bool, Option<String>)>();
+
+        // Request authorization with alert, sound, and badge options
+        let options: NSUInteger = UN_AUTHORIZATION_OPTION_ALERT
+            | UN_AUTHORIZATION_OPTION_SOUND
+            | UN_AUTHORIZATION_OPTION_BADGE;
+
+        let block = ConcreteBlock::new(move |granted: BOOL, error: id| {
+            let error_msg = if error != nil {
+                let error_desc: id = msg_send![error, localizedDescription];
+                Some(nsstring_to_string(error_desc))
+            } else {
+                None
+            };
+            let _ = tx.send((granted == YES, error_msg));
+        });
+        let block = block.copy();
+
+        println!("🔔 Requesting notification permission...");
+        let _: () = msg_send![center, requestAuthorizationWithOptions: options completionHandler: &*block];
+
+        // Wait for user response (this blocks until user clicks Allow/Don't Allow)
+        match rx.recv() {
+            Ok((granted, error_msg)) => {
+                if let Some(err) = error_msg {
+                    println!("❌ Permission request error: {}", err);
+                    return Err(err);
+                }
+                let status = if granted { "granted" } else { "denied" };
+                println!("🔔 Notification permission: {}", status);
+                Ok(status.to_string())
+            }
+            Err(e) => {
+                println!("❌ Failed to receive permission result: {}", e);
+                Err(format!("Failed to receive permission result: {}", e))
+            }
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn request_notification_permission() -> Result<String, String> {
+    // On non-macOS platforms, return granted (Linux doesn't require permission)
+    Ok("granted".to_string())
 }
 
 /// Create the UNUserNotificationCenterDelegate
