@@ -20,23 +20,16 @@ pub async fn show_notification(
 
 #[tauri::command]
 pub async fn check_notification_permission() -> Result<String, String> {
-    println!("🔍 Checking notification permission...");
-
-    // On macOS/Windows/Linux, we'll just return "granted" for now
-    // A proper implementation would check OS-level permissions
-    // For macOS: UNUserNotificationCenter.getNotificationSettings
-    // For Windows: Check Windows notification settings
-    // For Linux: Assume granted if notify-rust doesn't error
+    println!("🔍 Requesting notification permission...");
 
     #[cfg(target_os = "macos")]
     {
-        // TODO: Implement actual permission check via UNUserNotificationCenter
-        Ok("granted".to_string())
+        crate::notifications::macos::request_notification_permission()
     }
 
     #[cfg(target_os = "windows")]
     {
-        // TODO: Implement actual permission check via Windows APIs
+        // Windows typically doesn't require permission prompts for desktop apps
         Ok("granted".to_string())
     }
 

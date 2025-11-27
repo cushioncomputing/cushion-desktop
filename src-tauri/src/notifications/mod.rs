@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::collections::HashMap;
 
 #[cfg(target_os = "macos")]
-mod macos;
+pub mod macos;
 
 #[cfg(target_os = "windows")]
 mod windows;

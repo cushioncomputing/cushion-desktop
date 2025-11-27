@@ -87,8 +87,6 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     setup_deep_links(app.handle());
 
     // Setup notification system
-    // Skip in debug mode when running without proper bundle (causes crash)
-    #[cfg(not(debug_assertions))]
     notifications::setup(app.handle());
 
     // Prevent macOS App Nap to keep WebSocket connections alive
