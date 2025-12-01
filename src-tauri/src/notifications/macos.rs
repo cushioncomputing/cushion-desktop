@@ -92,8 +92,9 @@ pub fn request_notification_permission() -> Result<String, String> {
         println!("🔔 Requesting notification permission...");
         let _: () = msg_send![center, requestAuthorizationWithOptions: options completionHandler: &*block];
 
-        // Wait for user response (this blocks until user clicks Allow/Don't Allow)
-        match rx.recv() {
+        // Use timeout instead of blocking forever - the completion handler may not fire
+        // if the main run loop isn't pumping
+        match rx.recv_timeout(std::time::Duration::from_secs(30)) {
             Ok((granted, error_msg)) => {
                 if let Some(err) = error_msg {
                     println!("❌ Permission request error: {}", err);
@@ -103,9 +104,63 @@ pub fn request_notification_permission() -> Result<String, String> {
                 println!("🔔 Notification permission: {}", status);
                 Ok(status.to_string())
             }
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                println!("⚠️ Permission request timed out - checking current status");
+                // Fall back to checking current authorization status
+                get_current_authorization_status()
+            }
             Err(e) => {
                 println!("❌ Failed to receive permission result: {}", e);
                 Err(format!("Failed to receive permission result: {}", e))
+            }
+        }
+    }
+}
+
+/// Get current notification authorization status without prompting
+#[cfg(target_os = "macos")]
+fn get_current_authorization_status() -> Result<String, String> {
+    unsafe {
+        let _pool = NSAutoreleasePool::new(nil);
+
+        let center_class = class!(UNUserNotificationCenter);
+        let center: id = msg_send![center_class, currentNotificationCenter];
+
+        let (tx, rx) = mpsc::channel::<NSInteger>();
+
+        let block = ConcreteBlock::new(move |settings: id| {
+            let status: NSInteger = msg_send![settings, authorizationStatus];
+            let _ = tx.send(status);
+        });
+        let block = block.copy();
+
+        let _: () = msg_send![center, getNotificationSettingsWithCompletionHandler: &*block];
+
+        match rx.recv_timeout(std::time::Duration::from_secs(5)) {
+            Ok(status) => {
+                let status_str = match status {
+                    UN_AUTHORIZATION_STATUS_NOT_DETERMINED => {
+                        println!("🔔 Authorization status: not_determined (permission dialog didn't show)");
+                        "denied" // Treat as denied if we couldn't prompt
+                    }
+                    UN_AUTHORIZATION_STATUS_DENIED => {
+                        println!("🔔 Authorization status: denied");
+                        "denied"
+                    }
+                    UN_AUTHORIZATION_STATUS_AUTHORIZED => {
+                        println!("🔔 Authorization status: granted");
+                        "granted"
+                    }
+                    _ => {
+                        println!("🔔 Authorization status: unknown ({})", status);
+                        "denied"
+                    }
+                };
+                Ok(status_str.to_string())
+            }
+            Err(_) => {
+                println!("❌ Failed to get notification settings (timed out)");
+                Err("Failed to get notification settings".to_string())
             }
         }
     }
