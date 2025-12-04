@@ -95,7 +95,44 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             ],
         )?;
 
-        let menu = Menu::with_items(app, &[&app_submenu])?;
+        let edit_submenu = Submenu::with_items(
+            app,
+            "Edit",
+            true,
+            &[
+                &PredefinedMenuItem::undo(app, None)?,
+                &PredefinedMenuItem::redo(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::cut(app, None)?,
+                &PredefinedMenuItem::copy(app, None)?,
+                &PredefinedMenuItem::paste(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::select_all(app, None)?,
+            ],
+        )?;
+
+        let view_submenu = Submenu::with_items(
+            app,
+            "View",
+            true,
+            &[
+                &PredefinedMenuItem::fullscreen(app, None)?,
+            ],
+        )?;
+
+        let window_submenu = Submenu::with_items(
+            app,
+            "Window",
+            true,
+            &[
+                &PredefinedMenuItem::minimize(app, None)?,
+                &PredefinedMenuItem::maximize(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::close_window(app, None)?,
+            ],
+        )?;
+
+        let menu = Menu::with_items(app, &[&app_submenu, &edit_submenu, &view_submenu, &window_submenu])?;
         app.set_menu(menu)?;
     }
 
