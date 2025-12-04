@@ -43,6 +43,7 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .skip_initial_state("main")
@@ -61,6 +62,8 @@ pub fn run() {
             commands::window::is_window_focused,
             commands::window::is_window_minimized,
             commands::window::set_zoom_level,
+            commands::window::save_zoom_preference,
+            commands::window::get_zoom_preference,
             commands::system::open_url,
             commands::updater::check_for_updates,
             commands::updater::install_update,
@@ -262,19 +265,36 @@ fn get_initialization_script() -> &'static str {
 
         // Enable zoom controls with webview zoom
         let zoomLevel = 1.0;
+
+        // Load saved zoom preference on startup
+        (async function() {
+            try {
+                const savedZoom = await window.__TAURI__.core.invoke('get_zoom_preference');
+                if (savedZoom && savedZoom >= 0.5 && savedZoom <= 3.0) {
+                    zoomLevel = savedZoom;
+                    await window.__TAURI__.core.invoke('set_zoom_level', { zoom: zoomLevel });
+                }
+            } catch (e) {
+                console.log('Could not load zoom preference:', e);
+            }
+        })();
+
         document.addEventListener('keydown', async function(e) {
             if ((e.metaKey || e.ctrlKey) && e.key === '=') {
                 e.preventDefault();
                 zoomLevel = Math.min(zoomLevel + 0.1, 3.0);
                 await window.__TAURI__.core.invoke('set_zoom_level', { zoom: zoomLevel });
+                await window.__TAURI__.core.invoke('save_zoom_preference', { zoom: zoomLevel });
             } else if ((e.metaKey || e.ctrlKey) && e.key === '-') {
                 e.preventDefault();
                 zoomLevel = Math.max(zoomLevel - 0.1, 0.5);
                 await window.__TAURI__.core.invoke('set_zoom_level', { zoom: zoomLevel });
+                await window.__TAURI__.core.invoke('save_zoom_preference', { zoom: zoomLevel });
             } else if ((e.metaKey || e.ctrlKey) && e.key === '0') {
                 e.preventDefault();
                 zoomLevel = 1.0;
                 await window.__TAURI__.core.invoke('set_zoom_level', { zoom: zoomLevel });
+                await window.__TAURI__.core.invoke('save_zoom_preference', { zoom: zoomLevel });
             }
         });
 
