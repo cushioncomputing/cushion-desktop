@@ -194,7 +194,7 @@ fn get_initialization_script() -> &'static str {
             }
         });
 
-        // Open external links in default browser
+        // Handle link clicks
         document.addEventListener('click', async function(e) {
             let target = e.target;
             while (target && target.tagName !== 'A') {
@@ -203,8 +203,18 @@ fn get_initialization_script() -> &'static str {
 
             if (target && target.tagName === 'A' && target.href) {
                 const url = new URL(target.href);
-                // Only open external links (not same origin)
-                if (url.origin !== window.location.origin) {
+                const isInternal = url.origin === window.location.origin
+                    || url.hostname === 'cushion.so'
+                    || url.hostname.endsWith('.cushion.so')
+                    || url.hostname === 'localhost';
+
+                if (isInternal) {
+                    // Remove _blank target so internal links navigate in same window
+                    if (target.target === '_blank') {
+                        target.removeAttribute('target');
+                    }
+                } else {
+                    // External link - open in default browser
                     e.preventDefault();
                     await window.__TAURI__.core.invoke('open_url', { url: target.href });
                 }
