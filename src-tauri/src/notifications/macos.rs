@@ -40,10 +40,29 @@ const UN_AUTHORIZATION_STATUS_AUTHORIZED: NSInteger = 2;
 #[cfg(target_os = "macos")]
 static mut NOTIFICATION_MANAGER: Option<Arc<NotificationManager>> = None;
 
+/// Check if we're running in a proper app bundle (required for notifications)
+#[cfg(target_os = "macos")]
+fn is_bundled_app() -> bool {
+    unsafe {
+        let bundle: id = msg_send![class!(NSBundle), mainBundle];
+        if bundle == nil {
+            return false;
+        }
+        let bundle_id: id = msg_send![bundle, bundleIdentifier];
+        bundle_id != nil
+    }
+}
+
 /// Setup macOS notification handling
 #[cfg(target_os = "macos")]
 pub fn setup(manager: Arc<NotificationManager>) {
     unsafe {
+        // Skip notification setup in dev mode (no bundle)
+        if !is_bundled_app() {
+            println!("⚠️ Skipping macOS notification setup - not running in app bundle (dev mode)");
+            return;
+        }
+
         NOTIFICATION_MANAGER = Some(manager);
 
         // Get UNUserNotificationCenter
@@ -63,6 +82,12 @@ pub fn setup(manager: Arc<NotificationManager>) {
 /// Returns "granted" or "denied".
 #[cfg(target_os = "macos")]
 pub fn request_notification_permission() -> Result<String, String> {
+    // Skip in dev mode (no bundle)
+    if !is_bundled_app() {
+        println!("⚠️ Skipping notification permission request - not running in app bundle (dev mode)");
+        return Ok("denied".to_string());
+    }
+
     unsafe {
         let _pool = NSAutoreleasePool::new(nil);
 
@@ -120,6 +145,11 @@ pub fn request_notification_permission() -> Result<String, String> {
 /// Get current notification authorization status without prompting
 #[cfg(target_os = "macos")]
 fn get_current_authorization_status() -> Result<String, String> {
+    // Skip in dev mode (no bundle)
+    if !is_bundled_app() {
+        return Ok("denied".to_string());
+    }
+
     unsafe {
         let _pool = NSAutoreleasePool::new(nil);
 
@@ -256,6 +286,12 @@ pub fn show_notification(
     body: String,
     _url: Option<String>,
 ) -> Result<(), String> {
+    // Skip in dev mode (no bundle)
+    if !is_bundled_app() {
+        println!("⚠️ Skipping notification - not running in app bundle (dev mode)");
+        return Ok(());
+    }
+
     unsafe {
         let _pool = NSAutoreleasePool::new(nil);
 
