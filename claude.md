@@ -252,28 +252,47 @@ npm run test:deep-links
 
 ### Adding a New Tauri Command
 
-1. Define command function in `src-tauri/src/lib.rs`:
+1. Define command in the appropriate `src-tauri/src/commands/*.rs` module:
 ```rust
 #[tauri::command]
-fn my_command(param: String) -> Result<String, String> {
+pub fn my_command(param: String) -> Result<String, String> {
     // Implementation
     Ok("result".to_string())
 }
 ```
 
-2. Add to invoke_handler:
+2. Export from `commands/mod.rs` if in a new file
+
+3. Add to invoke_handler in `lib.rs`:
 ```rust
 .invoke_handler(tauri::generate_handler![
     // existing commands...
-    my_command
+    commands::mymodule::my_command
 ])
 ```
 
-3. Call from frontend:
+4. Call from frontend:
 ```javascript
 import { invoke } from '@tauri-apps/api/core';
 const result = await invoke('my_command', { param: 'value' });
 ```
+
+## Adding New Features
+
+When adding new functionality, place code in the appropriate module:
+
+| Feature Type | Location |
+|-------------|----------|
+| Tauri command | `commands/<category>.rs` |
+| Window creation/behavior | `window/mod.rs` |
+| Window events | `window/events.rs` |
+| Update system | `updater/` |
+| Menu items (macOS) | `menu/macos.rs` |
+| Notifications | `notifications/` |
+| Theme/appearance | `theme.rs` |
+| macOS-specific | Use `#[cfg(target_os = "macos")]` |
+
+**DO NOT** add to `lib.rs` - it's only for entry point, plugin registration, and setup orchestration.
 
 ### Debugging
 
