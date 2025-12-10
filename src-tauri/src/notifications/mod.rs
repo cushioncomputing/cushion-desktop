@@ -146,6 +146,15 @@ impl NotificationManager {
     }
 }
 
+/// Allowed URL schemes for notification deep links
+const ALLOWED_NOTIFICATION_URL_SCHEMES: &[&str] = &["cushion", "cushion-dev", "https"];
+
+/// Validates that a notification URL uses an allowed scheme
+fn is_valid_notification_url(url: &str) -> bool {
+    let scheme = url.split(':').next().unwrap_or("").to_lowercase();
+    ALLOWED_NOTIFICATION_URL_SCHEMES.contains(&scheme.as_str())
+}
+
 /// Setup notification system with default click handler
 pub fn setup(app: &AppHandle) -> Arc<NotificationManager> {
     let manager = NotificationManager::init(app.clone());
@@ -157,10 +166,14 @@ pub fn setup(app: &AppHandle) -> Arc<NotificationManager> {
 
         match click.action {
             ClickAction::Body | ClickAction::Button(_) => {
-                // Emit deep link event if URL exists
+                // Emit deep link event if URL exists and is valid
                 if let Some(url) = click.url {
-                    println!("🔗 Emitting deep link: {}", url);
-                    let _ = app_clone.emit("deep-link", url);
+                    if is_valid_notification_url(&url) {
+                        println!("🔗 Emitting deep link: {}", url);
+                        let _ = app_clone.emit("deep-link", url);
+                    } else {
+                        println!("⚠️ Rejected notification URL with invalid scheme: {}", url);
+                    }
                 }
 
                 // Focus the window

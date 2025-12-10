@@ -119,6 +119,15 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// Allowed deep link URL schemes
+const ALLOWED_DEEP_LINK_SCHEMES: &[&str] = &["cushion", "cushion-dev"];
+
+/// Validates that a deep link URL uses an allowed scheme
+fn validate_deep_link_scheme(url: &str) -> bool {
+    let scheme = url.split(':').next().unwrap_or("").to_lowercase();
+    ALLOWED_DEEP_LINK_SCHEMES.contains(&scheme.as_str())
+}
+
 /// Setup deep link event handling
 fn setup_deep_links(handle: &tauri::AppHandle) {
     let handle_clone = handle.clone();
@@ -133,6 +142,12 @@ fn setup_deep_links(handle: &tauri::AppHandle) {
         // Try to parse as JSON array
         if let Ok(urls) = serde_json::from_str::<Vec<String>>(payload) {
             if let Some(url) = urls.first() {
+                // Validate the URL scheme before processing
+                if !validate_deep_link_scheme(url) {
+                    println!("Rejected deep link with invalid scheme: {}", url);
+                    return;
+                }
+
                 println!("Received deep link: {}", url);
                 let _ = handle_clone.emit("deep-link", url);
 
