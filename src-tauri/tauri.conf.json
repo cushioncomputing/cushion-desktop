@@ -13,8 +13,8 @@
     "macOSPrivateApi": true,
     "windows": [],
     "security": {
-      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src 'self' ipc: http: https: ws: wss: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' data:; img-src 'self' data: https: http: blob:; font-src 'self' data: https: http:; worker-src 'self' blob:; child-src 'self' blob:;",
-      "dangerousDisableAssetCspModification": true,
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' *.youtube.com *.twitter.com va.vercel-scripts.com *.supercut.video; style-src 'self' 'unsafe-inline' *.googleapis.com; connect-src 'self' https://app.cushion.so https://*.cushion.so wss://app.cushion.so wss://*.cushion.so ipc: http://localhost:* ws://localhost:* https://*.posthog.com https://*.vercel-storage.com https://*.uploadthing.com https://*.supercut.video; img-src 'self' https: data: blob:; font-src 'self' data: *.googleapis.com *.gstatic.com unpkg.com; media-src 'self' https: blob:; worker-src 'self' blob:; child-src 'self' blob: *.youtube.com *.google.com *.twitter.com *.loom.com *.figma.com *.supercut.video; frame-src *.youtube.com *.twitter.com *.loom.com *.figma.com *.vimeo.com *.supercut.video;",
+      "dangerousDisableAssetCspModification": false,
       "capabilities": [
         {
           "identifier": "default",
