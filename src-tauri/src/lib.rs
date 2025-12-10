@@ -133,14 +133,26 @@ fn setup_deep_links(handle: &tauri::AppHandle) {
         // Try to parse as JSON array
         if let Ok(urls) = serde_json::from_str::<Vec<String>>(payload) {
             if let Some(url) = urls.first() {
-                println!("Received deep link: {}", url);
-                let _ = handle_clone.emit("deep-link", url);
+                // Validate the URL scheme before emitting
+                if let Ok(parsed) = url::Url::parse(url) {
+                    if parsed.scheme() == "cushion" || parsed.scheme() == "cushion-dev" {
+                        println!("Received deep link: {}", url);
+                        let _ = handle_clone.emit("deep-link", url);
 
-                // Show the window when a deep link is received
-                if let Some(window) = handle_clone.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                    let _ = window.unminimize();
+                        // Show the window when a deep link is received
+                        if let Some(window) = handle_clone.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.unminimize();
+                        }
+                    } else {
+                        eprintln!(
+                            "Rejected deep link with invalid scheme: {}",
+                            parsed.scheme()
+                        );
+                    }
+                } else {
+                    eprintln!("Failed to parse deep link URL: {}", url);
                 }
             }
         }

@@ -146,6 +146,23 @@ impl NotificationManager {
     }
 }
 
+/// Validate that a URL is safe to emit as a deep link
+fn is_valid_notification_url(url: &str) -> bool {
+    if let Ok(parsed) = url::Url::parse(url) {
+        // Allow cushion:// and cushion-dev:// deep links
+        if parsed.scheme() == "cushion" || parsed.scheme() == "cushion-dev" {
+            return true;
+        }
+        // Allow HTTPS URLs to cushion.so domains
+        if parsed.scheme() == "https" {
+            if let Some(host) = parsed.host_str() {
+                return host == "app.cushion.so" || host.ends_with(".cushion.so");
+            }
+        }
+    }
+    false
+}
+
 /// Setup notification system with default click handler
 pub fn setup(app: &AppHandle) -> Arc<NotificationManager> {
     let manager = NotificationManager::init(app.clone());
@@ -157,10 +174,14 @@ pub fn setup(app: &AppHandle) -> Arc<NotificationManager> {
 
         match click.action {
             ClickAction::Body | ClickAction::Button(_) => {
-                // Emit deep link event if URL exists
-                if let Some(url) = click.url {
-                    println!("🔗 Emitting deep link: {}", url);
-                    let _ = app_clone.emit("deep-link", url);
+                // Emit deep link event if URL exists and is valid
+                if let Some(ref url) = click.url {
+                    if is_valid_notification_url(url) {
+                        println!("🔗 Emitting deep link: {}", url);
+                        let _ = app_clone.emit("deep-link", url.clone());
+                    } else {
+                        eprintln!("🚫 Rejected invalid notification URL: {}", url);
+                    }
                 }
 
                 // Focus the window
