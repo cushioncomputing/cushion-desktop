@@ -41,6 +41,7 @@ pub fn run() {
                 .build()
         )
         .manage(updater::PendingUpdate::new())
+        .manage(commands::download::PendingDownload::new())
         .setup(setup_app)
         .on_window_event(window::handle_window_event)
         .invoke_handler(tauri::generate_handler![
@@ -57,6 +58,9 @@ pub fn run() {
             commands::updater::check_for_updates,
             commands::updater::install_update,
             commands::updater::get_app_version,
+            commands::download::download_file,
+            commands::download::download_blob,
+            commands::download::show_media_context_menu,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -71,6 +75,9 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         menu::setup_menu(app)?;
         menu::setup_menu_events(app);
     }
+
+    // Setup context menu event handler for media downloads
+    setup_context_menu_handler(app.handle());
 
     // Create the main window programmatically
     let win_builder = window::create_window_builder(app);
@@ -117,6 +124,52 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+/// Setup context menu event handler for media downloads
+fn setup_context_menu_handler(handle: &tauri::AppHandle) {
+    let handle_clone = handle.clone();
+    handle.on_menu_event(move |_app, event| {
+        let event_id = event.id().as_ref();
+
+        if event_id == "save_media" {
+            let handle = handle_clone.clone();
+            tauri::async_runtime::spawn(async move {
+                // Get the pending download info and execute it
+                let pending = handle.state::<commands::download::PendingDownload>();
+                let url = pending.url.lock().unwrap().take();
+                let media_type = pending.media_type.lock().unwrap().take();
+
+                if let (Some(url), Some(_media_type)) = (url, media_type) {
+                    match commands::download::download_file(handle.clone(), url, None).await {
+                        Ok(path) => {
+                            println!("Downloaded to: {}", path);
+                        }
+                        Err(e) => {
+                            // User cancelled is not an error worth logging
+                            if e != "Save cancelled" {
+                                eprintln!("Download failed: {}", e);
+                            }
+                        }
+                    }
+                }
+            });
+        } else if event_id == "copy_media_url" {
+            // Copy URL to clipboard
+            let pending = handle_clone.state::<commands::download::PendingDownload>();
+            let url = pending.url.lock().unwrap().take();
+            let _ = pending.media_type.lock().unwrap().take();
+            drop(pending); // Release the state borrow
+
+            if let Some(url) = url {
+                if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                    if let Err(e) = clipboard.set_text(&url) {
+                        eprintln!("Failed to copy to clipboard: {}", e);
+                    }
+                }
+            }
+        }
+    });
 }
 
 /// Setup deep link event handling

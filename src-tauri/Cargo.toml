@@ -32,6 +32,11 @@ tokio = { version = "1", features = ["time"] }
 raw-window-handle = "0.6"
 urlencoding = "2"
 uuid = { version = "1", features = ["v4"] }
+reqwest = { version = "0.12", features = ["stream"] }
+futures-util = "0.3"
+dirs = "5"
+base64 = "0.22"
+arboard = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.25"

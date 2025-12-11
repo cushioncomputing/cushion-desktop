@@ -130,6 +130,69 @@ fn get_initialization_script() -> &'static str {
                 }
             }
         }, true);
+
+        // Native context menu for images and videos
+        (function() {
+            // Context menu event listener - show native macOS menu
+            document.addEventListener('contextmenu', async function(e) {
+                const target = e.target;
+
+                // Check if right-clicked on an image
+                if (target.tagName === 'IMG' && target.src) {
+                    e.preventDefault();
+                    try {
+                        await window.__TAURI__.core.invoke('show_media_context_menu', {
+                            url: target.src,
+                            mediaType: 'image',
+                            x: e.clientX,
+                            y: e.clientY
+                        });
+                    } catch (err) {
+                        console.error('Failed to show context menu:', err);
+                    }
+                    return;
+                }
+
+                // Check if right-clicked on a video
+                if (target.tagName === 'VIDEO') {
+                    const src = target.src || (target.querySelector('source') && target.querySelector('source').src);
+                    if (src) {
+                        e.preventDefault();
+                        try {
+                            await window.__TAURI__.core.invoke('show_media_context_menu', {
+                                url: src,
+                                mediaType: 'video',
+                                x: e.clientX,
+                                y: e.clientY
+                            });
+                        } catch (err) {
+                            console.error('Failed to show context menu:', err);
+                        }
+                        return;
+                    }
+                }
+
+                // Check if right-clicked inside a video (on controls, etc.)
+                const videoParent = target.closest('video');
+                if (videoParent) {
+                    const src = videoParent.src || (videoParent.querySelector('source') && videoParent.querySelector('source').src);
+                    if (src) {
+                        e.preventDefault();
+                        try {
+                            await window.__TAURI__.core.invoke('show_media_context_menu', {
+                                url: src,
+                                mediaType: 'video',
+                                x: e.clientX,
+                                y: e.clientY
+                            });
+                        } catch (err) {
+                            console.error('Failed to show context menu:', err);
+                        }
+                        return;
+                    }
+                }
+            }, true);
+        })();
     "#
 }
 
